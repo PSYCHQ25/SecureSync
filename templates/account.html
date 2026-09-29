@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureSync – Account Settings</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        .account-container { max-width: 800px; margin: 40px auto; padding: 0 24px; }
+        .account-section { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 30px; margin-bottom: 24px; }
+        .account-section h2 { margin-bottom: 20px; font-size: 1.4rem; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 12px; }
+        .profile-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .profile-label { color: var(--text-secondary); font-weight: 500; }
+        .profile-value { color: var(--text-primary); font-family: var(--font-mono); }
+        .danger-zone { border-color: var(--red-threat); background: rgba(255, 51, 102, 0.03); }
+        .danger-zone h2 { color: var(--red-threat); border-color: rgba(255, 51, 102, 0.2); }
+    </style>
+</head>
+<body>
+    <div class="cyber-grid-overlay"></div>
+
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <path d="M9 12l2 2 4-4"/>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-title">SecureSync</span>
+                </div>
+            </div>
+            <div class="nav-right">
+                <a href="{{ url_for('dashboard') }}" class="btn-nav-action" style="background: transparent;">Dashboard</a>
+                <a href="{{ url_for('logout') }}" class="btn-nav-logout">Logout</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="account-container">
+        <!-- Flash Alerts -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="auth-alert alert-{{ category }}" style="margin-bottom: 24px;">
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="account-section">
+            <h2>Profile Overview</h2>
+            <div class="profile-row">
+                <span class="profile-label">Username</span>
+                <span class="profile-value">{{ current_user.username }}</span>
+            </div>
+            <div class="profile-row">
+                <span class="profile-label">Email Address</span>
+                <span class="profile-value">{{ current_user.email }}</span>
+            </div>
+            <div class="profile-row">
+                <span class="profile-label">Role</span>
+                <span class="profile-value">{{ current_user.role }}</span>
+            </div>
+            <div class="profile-row" style="border-bottom: none;">
+                <span class="profile-label">Member Since</span>
+                <span class="profile-value">{{ current_user.created_at[:10] }}</span>
+            </div>
+        </div>
+
+        <div class="account-section">
+            <h2>Change Password</h2>
+            <form action="{{ url_for('change_password') }}" method="POST">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label>Current Password</label>
+                    <input type="password" name="current_password" class="cyber-input" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label>New Password</label>
+                    <input type="password" name="new_password" class="cyber-input" minlength="6" required>
+                </div>
+                <button type="submit" class="btn-primary">Update Password</button>
+            </form>
+        </div>
+
+        <div class="account-section danger-zone">
+            <h2>Danger Zone</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 16px;">
+                Permanently delete your account and all scan history. This action cannot be undone.
+            </p>
+            <form action="{{ url_for('delete_account') }}" method="POST" onsubmit="return confirm('Are you absolutely sure you want to permanently delete your account and all scan history? This action is irreversible.');">
+                <button type="submit" class="btn-primary" style="background: var(--red-threat); border-color: var(--red-threat); color: white;">
+                    Delete Account Permanently
+                </button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

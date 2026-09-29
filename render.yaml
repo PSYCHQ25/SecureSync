@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: securesync
+    env: python
+    buildCommand: "pip install -r requirements.txt && python train_model.py"
+    startCommand: "gunicorn app:app -c gunicorn.conf.py"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.4
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SECURE_COOKIES
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: securesync-db
+          property: connectionString
+
+databases:
+  - name: securesync-db
+    databaseName: securesync
+    user: admin

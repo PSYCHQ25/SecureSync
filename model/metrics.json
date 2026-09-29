@@ -1,0 +1,92 @@
+{
+    "model_name": "Logistic Regression",
+    "accuracy": 95.65,
+    "precision": 91.67,
+    "recall": 100.0,
+    "f1_score": 95.65,
+    "confusion_matrix": {
+        "true_negatives": 11,
+        "false_positives": 1,
+        "false_negatives": 0,
+        "true_positives": 11
+    },
+    "model_comparison": [
+        {
+            "model_name": "Logistic Regression",
+            "accuracy": 95.65,
+            "precision": 91.67,
+            "recall": 100.0,
+            "f1_score": 95.65,
+            "cv_f1_mean": 92.82,
+            "confusion_matrix": {
+                "true_negatives": 11,
+                "false_positives": 1,
+                "false_negatives": 0,
+                "true_positives": 11
+            },
+            "is_champion": true
+        },
+        {
+            "model_name": "Multinomial Naive Bayes",
+            "accuracy": 91.3,
+            "precision": 84.62,
+            "recall": 100.0,
+            "f1_score": 91.67,
+            "cv_f1_mean": 90.71,
+            "confusion_matrix": {
+                "true_negatives": 10,
+                "false_positives": 2,
+                "false_negatives": 0,
+                "true_positives": 11
+            },
+            "is_champion": false
+        },
+        {
+            "model_name": "Linear Support Vector (Calibrated)",
+            "accuracy": 95.65,
+            "precision": 91.67,
+            "recall": 100.0,
+            "f1_score": 95.65,
+            "cv_f1_mean": 91.65,
+            "confusion_matrix": {
+                "true_negatives": 11,
+                "false_positives": 1,
+                "false_negatives": 0,
+                "true_positives": 11
+            },
+            "is_champion": false
+        },
+        {
+            "model_name": "Random Forest",
+            "accuracy": 91.3,
+            "precision": 100.0,
+            "recall": 81.82,
+            "f1_score": 90.0,
+            "cv_f1_mean": 88.29,
+            "confusion_matrix": {
+                "true_negatives": 12,
+                "false_positives": 0,
+                "false_negatives": 2,
+                "true_positives": 9
+            },
+            "is_champion": false
+        },
+        {
+            "model_name": "Decision Tree",
+            "accuracy": 91.3,
+            "precision": 100.0,
+            "recall": 81.82,
+            "f1_score": 90.0,
+            "cv_f1_mean": 79.14,
+            "confusion_matrix": {
+                "true_negatives": 12,
+                "false_positives": 0,
+                "false_negatives": 2,
+                "true_positives": 9
+            },
+            "is_champion": false
+        }
+    ],
+    "test_samples": 23,
+    "train_samples": 88
+}

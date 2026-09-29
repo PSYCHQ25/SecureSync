@@ -1,0 +1,10 @@
+[15/09/2026, 09:15:22] John Doe: Good morning! Are you heading to the cybersecurity lecture today?
+[15/09/2026, 09:18:40] Alex: Yes, I am already near the lab. Don't forget your laptop.
+[15/09/2026, 10:45:11] Unknown Contact (+1 555-019-8821): URGENT: Your Chase checking account is locked due to suspicious activity. Verify immediately at http://bit.ly/chase-lock-sec or your card will be canceled.
+[15/09/2026, 11:20:05] Maria: Thanks for sharing the study notes for the operating systems midterm!
+[15/09/2026, 12:05:49] Unknown Contact (+1 555-014-7722): CONGRATULATIONS! You have been selected as the winner of $50,000 Walmart voucher. Claim your prize code at http://win-walmart-voucher.com before midnight!
+[15/09/2026, 13:10:18] David: Let's grab lunch at 1pm at the cafeteria.
+[15/09/2026, 14:02:33] Unknown Contact (+1 555-019-3329): Hi Mom, my phone fell in the water and this is my temporary WhatsApp number. My bank app is not working and I urgently need $450 to pay for car towing. Can you send it via Zelle right now?
+[15/09/2026, 15:30:12] Sarah: Class for tomorrow has been rescheduled to Hall B room 301.
+[15/09/2026, 16:45:00] Unknown Contact (+1 888-555-0199): INTERNAL REVENUE SERVICE: A formal lawsuit has been registered under your SSN. Call our legal division immediately or local sheriff will execute arrest warrant.
+[15/09/2026, 17:15:20] Kevin: See you guys at soccer practice this evening!
