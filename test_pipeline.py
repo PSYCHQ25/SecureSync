@@ -327,6 +327,25 @@ class TestSecureSyncPipeline(unittest.TestCase):
         # Cleanup
         delete_user_account(auth_u['id'])
 
+    def test_ghost_session_invalidation_and_recovery(self):
+        """Tests that an obsolete session cookie (e.g. from an old database or migration) is safely cleared."""
+        client = app.test_client()
+
+        with client.session_transaction() as sess:
+            sess['user_id'] = 9999999
+            sess['username'] = 'obsolete_analyst'
+
+        # API scan must return 401 and invalidate session without database foreign key crash
+        res = client.post('/api/scan', json={"message": "Urgent verification needed"})
+        self.assertEqual(res.status_code, 401)
+
+        # Dashboard navigation must redirect to login rather than rendering with ghost ID
+        with client.session_transaction() as sess:
+            sess['user_id'] = 9999999
+        res_dash = client.get('/dashboard')
+        self.assertEqual(res_dash.status_code, 302)
+        self.assertIn('/login', res_dash.headers.get('Location', ''))
+
 
 if __name__ == '__main__':
     unittest.main()

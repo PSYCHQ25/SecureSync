@@ -271,6 +271,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ message: text })
             });
 
+            if (response.status === 401) {
+                alert('Your session has expired or is invalid. Please sign in again.');
+                window.location.href = '/login';
+                return;
+            }
+
             const data = await response.json();
 
             if (data.status === 'success') {
@@ -547,6 +553,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: formData
             });
 
+            if (res.status === 401) {
+                alert('Your session has expired or is invalid. Please sign in again.');
+                window.location.href = '/login';
+                return;
+            }
+
             const data = await res.json();
             if (data.status === 'success') {
                 currentBatchResults = data.results || [];
@@ -683,6 +695,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const res = await fetch('/api/history');
+                if (res.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
                 const data = await res.json();
                 if (data.status === 'success' && Array.isArray(data.history)) {
                     renderHistoryTable(data.history);
@@ -739,6 +755,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const res = await fetch(`/api/scan/${encodeURIComponent(scanId)}`);
+            if (res.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
             const data = await res.json();
             if (data.status === 'success' && data.scan) {
                 renderScanDetailReport(data.scan);

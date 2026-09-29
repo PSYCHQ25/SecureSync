@@ -110,17 +110,52 @@ def is_scan_rate_limited(user_id: int) -> bool:
     return False
 
 # -----------------------------------------------------------------------------
-# Authentication & Authorization Decorator
+# Authentication & Authorization Decorator & Session Validator
 # -----------------------------------------------------------------------------
+@app.before_request
+def validate_session_user():
+    """
+    Validates that any user ID stored in the session exists in the active database.
+    If the database was migrated (e.g. SQLite to Neon PostgreSQL) or the user was deleted,
+    this automatically clears the invalid session and redirects to login rather than
+    causing database constraint errors.
+    """
+    user_id = session.get('user_id')
+    if user_id is not None:
+        user = get_user_by_id(user_id)
+        if not user:
+            session.clear()
+            if request.path.startswith('/api/'):
+                return jsonify({
+                    "status": "error",
+                    "message": "Your session has expired or the user account was not found. Please log in again."
+                }), 401
+            public_endpoints = {'static', 'login', 'register', 'home', 'health', None}
+            if request.endpoint not in public_endpoints:
+                flash("Your previous session is no longer valid. Please sign in or create an account.", "warning")
+                return redirect(url_for('login'))
+
+
 def login_required(f):
     """Enforces strict authentication for protected routes."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
+        user_id = session.get('user_id')
+        if not user_id:
             if request.path.startswith('/api/'):
-                return jsonify({"status": "error", "message": "Authentication required."}), 401
+                return jsonify({"status": "error", "message": "Authentication required. Please log in."}), 401
             flash("Authentication required to access the SecureSync portal.", "warning")
             return redirect(url_for('login'))
+
+        # Verify that the authenticated user actually exists in the active database
+        user = get_user_by_id(user_id)
+        if not user:
+            session.clear()
+            if request.path.startswith('/api/'):
+                return jsonify({"status": "error", "message": "Session expired or user account not found. Please log in again."}), 401
+            flash("Your session has expired. Please sign in again.", "warning")
+            return redirect(url_for('login'))
+
         return f(*args, **kwargs)
     return decorated_function
 
@@ -209,7 +244,9 @@ PRESET_SAMPLES = [
 def home():
     """Public SaaS homepage."""
     if 'user_id' in session:
-        return redirect(url_for('dashboard'))
+        if get_user_by_id(session['user_id']):
+            return redirect(url_for('dashboard'))
+        session.clear()
     return render_template('home.html')
 
 
@@ -217,7 +254,9 @@ def home():
 def login():
     """Analyst authentication gateway (Username or Email)."""
     if 'user_id' in session:
-        return redirect(url_for('dashboard'))
+        if get_user_by_id(session['user_id']):
+            return redirect(url_for('dashboard'))
+        session.clear()
 
     if request.method == 'POST':
         identifier = request.form.get('identifier', '').strip() or request.form.get('username', '').strip()
@@ -257,7 +296,9 @@ def login():
 def register():
     """User account registration with salted PBKDF2 hashing."""
     if 'user_id' in session:
-        return redirect(url_for('dashboard'))
+        if get_user_by_id(session['user_id']):
+            return redirect(url_for('dashboard'))
+        session.clear()
 
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
@@ -315,12 +356,18 @@ def logout():
 @login_required
 def dashboard():
     """Renders main cybersecurity console with authenticated user context."""
+    user = get_user_by_id(session.get('user_id'))
+    if not user:
+        session.clear()
+        flash("Your session has expired. Please sign in again.", "warning")
+        return redirect(url_for('login'))
+
     current_user = {
-        "id": session.get('user_id'),
-        "username": session.get('username'),
-        "email": session.get('email'),
-        "full_name": session.get('full_name'),
-        "role": session.get('role')
+        "id": user['id'],
+        "username": user['username'],
+        "email": user.get('email', ''),
+        "full_name": user.get('full_name') or user['username'],
+        "role": user.get('role', 'Security Analyst')
     }
     return render_template('dashboard.html', current_user=current_user)
 
@@ -522,7 +569,15 @@ def scan_message():
     Persists scan record permanently in PostgreSQL/SQLite.
     """
     user_id = session.get('user_id')
-    if is_scan_rate_limited(user_id):
+    user = get_user_by_id(user_id)
+    if not user:
+        session.clear()
+        return jsonify({
+            "status": "error",
+            "message": "User session is invalid or user not found. Please log in again."
+        }), 401
+
+    if is_scan_rate_limited(user['id']):
         return jsonify({
             "status": "error",
             "message": "Scan rate limit exceeded. Please wait a moment before analyzing more messages."
@@ -558,9 +613,9 @@ def scan_message():
         else:
             stats["legitimate_count"] += 1
 
-        # Save scan report permanently to database
+        # Save scan report permanently to database strictly linked to authenticated user['id']
         saved_scan_id = save_scan(
-            user_id=user_id,
+            user_id=user['id'],
             submitted_message=raw_text,
             risk_score=analysis.get('risk_score', 0),
             risk_level=analysis.get('risk_level', 'LOW'),
@@ -573,7 +628,7 @@ def scan_message():
         analysis['scan_id'] = saved_scan_id
 
         # Fetch updated user-specific statistics
-        user_stats = get_user_stats(user_id)
+        user_stats = get_user_stats(user['id'])
         user_stats['model_accuracy'] = stats.get('model_accuracy', 95.65)
 
         return jsonify({
@@ -582,6 +637,12 @@ def scan_message():
             "updated_stats": user_stats
         })
 
+    except ValueError as ve:
+        app.logger.warning(f"Scan validation error: {ve}")
+        return jsonify({
+            "status": "error",
+            "message": str(ve)
+        }), 400
     except Exception as e:
         app.logger.error(f"Error during message scanning: {e}", exc_info=True)
         return jsonify({
@@ -598,7 +659,15 @@ def scan_file():
     Protected by login_required.
     """
     user_id = session.get('user_id')
-    if is_scan_rate_limited(user_id):
+    user = get_user_by_id(user_id)
+    if not user:
+        session.clear()
+        return jsonify({
+            "status": "error",
+            "message": "User session is invalid or user not found. Please log in again."
+        }), 401
+
+    if is_scan_rate_limited(user['id']):
         return jsonify({
             "status": "error",
             "message": "Scan rate limit reached. Please wait before uploading another file."
@@ -688,7 +757,7 @@ def scan_file():
 
             # Save batch item to user history as well
             save_scan(
-                user_id=user_id,
+                user_id=user['id'],
                 submitted_message=item["text"],
                 risk_score=scan_res.get('risk_score', 0),
                 risk_level=scan_res.get('risk_level', 'LOW'),
@@ -711,7 +780,7 @@ def scan_file():
                 "links": scan_res["links"]
             })
 
-        user_stats = get_user_stats(user_id)
+        user_stats = get_user_stats(user['id'])
         user_stats['model_accuracy'] = stats.get('model_accuracy', 95.65)
 
         return jsonify({

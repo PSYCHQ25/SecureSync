@@ -16,6 +16,7 @@ import uuid
 import hashlib
 import secrets
 import sqlite3
+import time
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List, Tuple
 from urllib.parse import urlparse
@@ -36,7 +37,10 @@ SQLITE_DB_PATH = os.path.join(BASE_DIR, 'database.db')
 def get_database_url() -> Optional[str]:
     """Returns the normalized DATABASE_URL if configured for PostgreSQL."""
     url = os.environ.get('DATABASE_URL')
-    if url and url.startswith('postgres://'):
+    if not url:
+        return None
+    url = url.strip().strip("'\"")
+    if url.startswith('postgres://'):
         # Fix Render / Heroku legacy postgres:// scheme to postgresql://
         url = url.replace('postgres://', 'postgresql://', 1)
     return url
@@ -49,7 +53,7 @@ def is_postgres() -> bool:
 
 
 class DBConnection:
-    """Context manager for unified PostgreSQL and SQLite transactions."""
+    """Context manager for unified PostgreSQL and SQLite transactions with automatic reconnect retry."""
     def __init__(self):
         self.is_pg = is_postgres()
         self.conn = None
@@ -57,7 +61,22 @@ class DBConnection:
     def __enter__(self):
         if self.is_pg:
             db_url = get_database_url()
-            self.conn = psycopg2.connect(db_url, cursor_factory=psycopg2.extras.RealDictCursor)
+            max_retries = 3
+            last_err = None
+            for attempt in range(max_retries):
+                try:
+                    self.conn = psycopg2.connect(
+                        db_url,
+                        cursor_factory=psycopg2.extras.RealDictCursor,
+                        connect_timeout=10
+                    )
+                    break
+                except Exception as e:
+                    last_err = e
+                    if attempt < max_retries - 1:
+                        time.sleep(0.8)
+                    else:
+                        raise last_err
         else:
             self.conn = sqlite3.connect(SQLITE_DB_PATH)
             self.conn.row_factory = sqlite3.Row
@@ -67,11 +86,13 @@ class DBConnection:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.conn:
-            if exc_type is None:
-                self.conn.commit()
-            else:
-                self.conn.rollback()
-            self.conn.close()
+            try:
+                if exc_type is None:
+                    self.conn.commit()
+                else:
+                    self.conn.rollback()
+            finally:
+                self.conn.close()
 
 
 def placeholder(param_name_or_num: int = 1) -> str:
@@ -86,6 +107,7 @@ def init_db():
       - scans
       - password_resets
     Data is permanently persisted and NEVER wiped on startup.
+    Idempotent and safe to run on deployment without destroying data.
     """
     with DBConnection() as conn:
         cursor = conn.cursor()
@@ -130,6 +152,16 @@ def init_db():
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                 );
             ''')
+
+            # Performance & Data Integrity Indexes
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_scans_user_id ON scans(user_id);')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_scans_created_at ON scans(created_at);')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);')
+
+            # Safe column additions if needed (non-destructive migrations)
+            cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name VARCHAR(150);')
+            cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT \'Security Analyst\';')
         else:
             # SQLite Schema
             cursor.execute('''
@@ -279,6 +311,13 @@ def authenticate_user(identifier: str, password: str) -> Optional[Dict[str, Any]
 
 def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
     """Retrieves user profile by ID."""
+    if not user_id:
+        return None
+    try:
+        user_id = int(user_id)
+    except (ValueError, TypeError):
+        return None
+
     p = placeholder()
     with DBConnection() as conn:
         cursor = conn.cursor()
@@ -286,6 +325,7 @@ def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
         row = cursor.fetchone()
         if row:
             d = dict(row)
+            d['id'] = int(d['id'])
             d['created_at'] = str(d.get('created_at', ''))
             return d
         return None
@@ -439,14 +479,30 @@ def save_scan(user_id: int, submitted_message: str, risk_score: int, risk_level:
               suspicious_indicators: List[Dict[str, Any]], recommended_action: str) -> str:
     """
     Saves a complete scan report linked to a user. Returns the generated unique scan_id.
+    Validates that user_id exists in the users table before insertion to enforce referential integrity.
     """
-    scan_id = f"SCN-{uuid.uuid4().hex[:12].upper()}"
-    reasons_json = json.dumps(detection_reasons)
-    indicators_json = json.dumps(suspicious_indicators)
+    if not user_id:
+        raise ValueError("Cannot save scan without an authenticated user ID.")
+
+    try:
+        user_id = int(user_id)
+    except (ValueError, TypeError):
+        raise ValueError(f"Invalid user ID: {user_id}")
+
     p = placeholder()
 
     with DBConnection() as conn:
         cursor = conn.cursor()
+
+        # Strict validation: verify user exists in DB before attempting insert
+        cursor.execute(f"SELECT id FROM users WHERE id = {p}", (user_id,))
+        if not cursor.fetchone():
+            raise ValueError(f"User with ID {user_id} does not exist in the database.")
+
+        scan_id = f"SCN-{uuid.uuid4().hex[:12].upper()}"
+        reasons_json = json.dumps(detection_reasons if detection_reasons is not None else [])
+        indicators_json = json.dumps(suspicious_indicators if suspicious_indicators is not None else [])
+
         cursor.execute(f"""
             INSERT INTO scans (
                 scan_id, user_id, submitted_message, risk_score, risk_level,
@@ -465,6 +521,13 @@ def get_user_scans(user_id: int, limit: int = 50) -> List[Dict[str, Any]]:
     Retrieves all past scans strictly belonging to user_id.
     Guarantees cross-tenant data isolation.
     """
+    if not user_id:
+        return []
+    try:
+        user_id = int(user_id)
+    except (ValueError, TypeError):
+        return []
+
     p = placeholder()
     with DBConnection() as conn:
         cursor = conn.cursor()
@@ -483,17 +546,24 @@ def get_user_scans(user_id: int, limit: int = 50) -> List[Dict[str, Any]]:
     for r in rows:
         d = dict(r)
         # Parse JSON fields safely
-        try:
-            d['detection_reasons'] = json.loads(d['detection_reasons'])
-        except Exception:
+        if isinstance(d.get('detection_reasons'), str):
+            try:
+                d['detection_reasons'] = json.loads(d['detection_reasons'])
+            except Exception:
+                d['detection_reasons'] = []
+        elif not isinstance(d.get('detection_reasons'), list):
             d['detection_reasons'] = []
-        try:
-            d['suspicious_indicators'] = json.loads(d['suspicious_indicators'])
-        except Exception:
+
+        if isinstance(d.get('suspicious_indicators'), str):
+            try:
+                d['suspicious_indicators'] = json.loads(d['suspicious_indicators'])
+            except Exception:
+                d['suspicious_indicators'] = []
+        elif not isinstance(d.get('suspicious_indicators'), list):
             d['suspicious_indicators'] = []
-        
+
         # Message preview
-        raw_msg = d['submitted_message']
+        raw_msg = d.get('submitted_message', '')
         d['message_preview'] = raw_msg[:90] + ('...' if len(raw_msg) > 90 else '')
         d['created_at'] = str(d.get('created_at', ''))
         d['date'] = d['created_at'][:19]
@@ -510,6 +580,13 @@ def get_scan_by_id(scan_id: str, user_id: int) -> Optional[Dict[str, Any]]:
     Retrieves a single scan by scan_id ONLY if it belongs to user_id.
     Strictly prevents User B from accessing User A's scans.
     """
+    if not user_id or not scan_id:
+        return None
+    try:
+        user_id = int(user_id)
+    except (ValueError, TypeError):
+        return None
+
     p = placeholder()
     with DBConnection() as conn:
         cursor = conn.cursor()
@@ -525,14 +602,22 @@ def get_scan_by_id(scan_id: str, user_id: int) -> Optional[Dict[str, Any]]:
             return None
 
         d = dict(row)
-        try:
-            d['detection_reasons'] = json.loads(d['detection_reasons'])
-        except Exception:
+        if isinstance(d.get('detection_reasons'), str):
+            try:
+                d['detection_reasons'] = json.loads(d['detection_reasons'])
+            except Exception:
+                d['detection_reasons'] = []
+        elif not isinstance(d.get('detection_reasons'), list):
             d['detection_reasons'] = []
-        try:
-            d['suspicious_indicators'] = json.loads(d['suspicious_indicators'])
-        except Exception:
+
+        if isinstance(d.get('suspicious_indicators'), str):
+            try:
+                d['suspicious_indicators'] = json.loads(d['suspicious_indicators'])
+            except Exception:
+                d['suspicious_indicators'] = []
+        elif not isinstance(d.get('suspicious_indicators'), list):
             d['suspicious_indicators'] = []
+
         d['created_at'] = str(d.get('created_at', ''))
         d['date'] = d['created_at'][:19]
         d['scanned_at'] = d['date']
@@ -543,6 +628,21 @@ def get_scan_by_id(scan_id: str, user_id: int) -> Optional[Dict[str, Any]]:
 
 def get_user_stats(user_id: int) -> Dict[str, Any]:
     """Computes summary statistics specifically for a single user."""
+    default_stats = {
+        "total_scanned": 0,
+        "threats_detected": 0,
+        "suspicious_count": 0,
+        "safe_verified": 0,
+        "legitimate_count": 0,
+        "average_risk": 0
+    }
+    if not user_id:
+        return default_stats
+    try:
+        user_id = int(user_id)
+    except (ValueError, TypeError):
+        return default_stats
+
     p = placeholder()
     with DBConnection() as conn:
         cursor = conn.cursor()
@@ -566,14 +666,7 @@ def get_user_stats(user_id: int) -> Dict[str, Any]:
                 "legitimate_count": int(d.get('safe') or 0),
                 "average_risk": round(float(d.get('avg_score') or 0), 1)
             }
-        return {
-            "total_scanned": 0,
-            "threats_detected": 0,
-            "suspicious_count": 0,
-            "safe_verified": 0,
-            "legitimate_count": 0,
-            "average_risk": 0
-        }
+        return default_stats
 
 
 if __name__ == '__main__':
