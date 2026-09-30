@@ -43,7 +43,12 @@ def get_database_url() -> Optional[str]:
     if url.startswith('postgres://'):
         # Fix Render / Heroku legacy postgres:// scheme to postgresql://
         url = url.replace('postgres://', 'postgresql://', 1)
+    # Ensure Neon and remote cloud PostgreSQL uses sslmode=require
+    if 'sslmode=' not in url and 'localhost' not in url and '127.0.0.1' not in url:
+        sep = '&' if '?' in url else '?'
+        url = f"{url}{sep}sslmode=require"
     return url
+
 
 
 def is_postgres() -> bool:
@@ -158,10 +163,14 @@ def init_db():
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_scans_created_at ON scans(created_at);')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_password_resets_token_hash ON password_resets(token_hash);')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_password_resets_user_id ON password_resets(user_id);')
 
             # Safe column additions if needed (non-destructive migrations)
             cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name VARCHAR(150);')
             cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT \'Security Analyst\';')
+            # Clean up obsolete legacy tables if present
+            cursor.execute('DROP TABLE IF EXISTS scan_history;')
         else:
             # SQLite Schema
             cursor.execute('''
@@ -205,6 +214,16 @@ def init_db():
                 );
             ''')
 
+            # SQLite Performance & Data Integrity Indexes
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_scans_user_id ON scans(user_id);')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_scans_created_at ON scans(created_at);')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_password_resets_token_hash ON password_resets(token_hash);')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_password_resets_user_id ON password_resets(user_id);')
+            # Clean up obsolete legacy tables if present
+            cursor.execute('DROP TABLE IF EXISTS scan_history;')
+
 
 def validate_email(email: str) -> bool:
     """Validates email format using standard regex."""
@@ -222,8 +241,12 @@ def register_user(username: str, email: str, password: str, full_name: Optional[
     Registers a new user with salted PBKDF2:SHA-256 password hashing.
     Enforces unique username and email.
     """
-    username = username.strip() if username else ""
-    email = email.strip().lower() if email else ""
+    username = username.strip().replace('\x00', '') if username else ""
+    email = email.strip().lower().replace('\x00', '') if email else ""
+    if full_name:
+        full_name = full_name.replace('\x00', '')
+    if password:
+        password = password.replace('\x00', '')
 
     if not username or len(username) < 3:
         return {"success": False, "message": "Username must be at least 3 characters long."}
@@ -400,9 +423,10 @@ def create_password_reset_token(email: str) -> Optional[Tuple[str, str]]:
     if not user:
         return None
 
+    from datetime import timezone
     raw_token = secrets.token_urlsafe(32)
     token_hashed = hash_token(raw_token)
-    expires_at = datetime.utcnow() + timedelta(hours=1)
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
     p = placeholder()
 
     with DBConnection() as conn:
@@ -413,7 +437,7 @@ def create_password_reset_token(email: str) -> Optional[Tuple[str, str]]:
         cursor.execute(f"""
             INSERT INTO password_resets (user_id, token_hash, expires_at, used)
             VALUES ({p}, {p}, {p}, 0)
-        """, (user['id'], token_hashed, expires_at))
+        """, (user['id'], token_hashed, expires_at if is_postgres() else expires_at.isoformat()))
 
     return raw_token, user['username']
 
@@ -425,6 +449,8 @@ def verify_and_use_reset_token(raw_token: str, new_password: str) -> Dict[str, A
     if not raw_token or not new_password or len(new_password) < 6:
         return {"success": False, "message": "Password must be at least 6 characters long."}
 
+    new_password = new_password.replace('\x00', '')
+    raw_token = raw_token.replace('\x00', '')
     token_hashed = hash_token(raw_token)
     p = placeholder()
 
@@ -444,7 +470,9 @@ def verify_and_use_reset_token(raw_token: str, new_password: str) -> Dict[str, A
         if rec_dict['used']:
             return {"success": False, "message": "This password reset link has already been used."}
 
-        # Check expiration
+        # Check expiration safely using timezone-aware UTC datetime
+        from datetime import timezone
+        now = datetime.now(timezone.utc)
         expires_at = rec_dict['expires_at']
         if isinstance(expires_at, str):
             try:
@@ -452,14 +480,12 @@ def verify_and_use_reset_token(raw_token: str, new_password: str) -> Dict[str, A
             except Exception:
                 pass
 
-        # Handle UTC naive vs aware
-        now = datetime.utcnow()
-        if hasattr(expires_at, 'tzinfo') and expires_at.tzinfo is not None:
-            from datetime import timezone
-            now = datetime.now(timezone.utc)
+        if hasattr(expires_at, 'tzinfo') and expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
 
         if now > expires_at:
             return {"success": False, "message": "This reset link has expired. Please request a new one."}
+
 
         # Token is valid; apply new password
         new_hash = generate_password_hash(new_password, method='pbkdf2:sha256')
@@ -500,8 +526,16 @@ def save_scan(user_id: int, submitted_message: str, risk_score: int, risk_level:
             raise ValueError(f"User with ID {user_id} does not exist in the database.")
 
         scan_id = f"SCN-{uuid.uuid4().hex[:12].upper()}"
-        reasons_json = json.dumps(detection_reasons if detection_reasons is not None else [])
-        indicators_json = json.dumps(suspicious_indicators if suspicious_indicators is not None else [])
+        # Sanitize any NUL (0x00) characters to ensure compatibility across PostgreSQL and SQLite
+        clean_msg = (submitted_message or '').replace('\x00', '')
+        clean_class = (threat_classification or '').replace('\x00', '')
+        clean_risk = (risk_level or '').replace('\x00', '')
+        clean_action = (recommended_action or '').replace('\x00', '')
+        clean_reasons = [r.replace('\x00', '') if isinstance(r, str) else r for r in (detection_reasons or [])]
+        clean_indicators = suspicious_indicators if suspicious_indicators is not None else []
+
+        reasons_json = json.dumps(clean_reasons).replace('\x00', '')
+        indicators_json = json.dumps(clean_indicators).replace('\x00', '')
 
         cursor.execute(f"""
             INSERT INTO scans (
@@ -510,8 +544,8 @@ def save_scan(user_id: int, submitted_message: str, risk_score: int, risk_level:
                 recommended_action
             ) VALUES ({p}, {p}, {p}, {p}, {p}, {p}, {p}, {p}, {p})
         """, (
-            scan_id, user_id, submitted_message, int(risk_score), risk_level,
-            threat_classification, reasons_json, indicators_json, recommended_action
+            scan_id, user_id, clean_msg, int(risk_score), clean_risk,
+            clean_class, reasons_json, indicators_json, clean_action
         ))
     return scan_id
 

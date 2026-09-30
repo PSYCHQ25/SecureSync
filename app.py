@@ -14,6 +14,7 @@ import re
 import json
 import time
 import secrets
+import html
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from collections import defaultdict
@@ -125,13 +126,16 @@ def validate_session_user():
         user = get_user_by_id(user_id)
         if not user:
             session.clear()
-            if request.path.startswith('/api/'):
-                return jsonify({
-                    "status": "error",
-                    "message": "Your session has expired or the user account was not found. Please log in again."
-                }), 401
-            public_endpoints = {'static', 'login', 'register', 'home', 'health', None}
+            public_endpoints = {
+                'static', 'login', 'register', 'home', 'health',
+                'forgot_password', 'reset_password', 'get_samples', 'get_metrics', None
+            }
             if request.endpoint not in public_endpoints:
+                if request.path.startswith('/api/'):
+                    return jsonify({
+                        "status": "error",
+                        "message": "Your session has expired or the user account was not found. Please log in again."
+                    }), 401
                 flash("Your previous session is no longer valid. Please sign in or create an account.", "warning")
                 return redirect(url_for('login'))
 
@@ -419,8 +423,111 @@ def delete_account():
 
 
 # -----------------------------------------------------------------------------
-# Password Recovery
+# Password Recovery & Email Dispatch
 # -----------------------------------------------------------------------------
+def send_password_reset_email(recipient_email: str, username: str, reset_url: str) -> bool:
+    """
+    Dispatches a cryptographically secure, single-use password recovery link
+    via SMTP using secure environment variables on Render, Railway, or VPS.
+    Supports STARTTLS (port 587) and SSL (port 465) with HTML & plaintext fallback.
+    """
+    smtp_host = os.environ.get('SMTP_HOST')
+    if not smtp_host:
+        return False
+
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+
+        smtp_port = int(os.environ.get('SMTP_PORT', 587))
+        smtp_user = os.environ.get('SMTP_USER')
+        smtp_pass = os.environ.get('SMTP_PASSWORD') or os.environ.get('SMTP_PASS')
+        mail_from = os.environ.get('SMTP_FROM') or smtp_user or 'noreply@securesync.internal'
+        use_ssl = (os.environ.get('SMTP_USE_SSL', '').lower() in ('true', '1')) or (smtp_port == 465)
+        use_tls = os.environ.get('SMTP_USE_TLS', 'true').lower() in ('true', '1') and not use_ssl and smtp_port != 25
+
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = 'SecureSync – Password Recovery Request'
+        msg['From'] = mail_from
+        msg['To'] = recipient_email
+
+        # Plaintext Fallback
+        text_body = (
+            f"Hello {username},\n\n"
+            "A password reset request was initiated for your SecureSync account.\n"
+            f"Click the link below within 60 minutes to choose a new password:\n\n"
+            f"{reset_url}\n\n"
+            "If you did not request this, please disregard this email. Your credentials remain safe.\n\n"
+            "– SecureSync Cyber Defense Team\n"
+        )
+
+        # Cyber-themed HTML Version
+        safe_name = html.escape(username)
+        html_body = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #06090e; color: #e2e8f0; margin: 0; padding: 24px; }}
+  .card {{ background: #0c121e; border: 1px solid #1e293b; border-radius: 12px; max-width: 540px; margin: 0 auto; padding: 32px; }}
+  .header {{ border-bottom: 1px solid #1e293b; padding-bottom: 18px; margin-bottom: 22px; }}
+  .brand {{ color: #00f0ff; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }}
+  .sub {{ color: #94a3b8; font-size: 13px; margin-top: 4px; }}
+  .content {{ color: #cbd5e1; font-size: 14px; line-height: 1.6; margin-bottom: 28px; }}
+  .btn {{ display: inline-block; background: #00f0ff; color: #06090e; font-weight: 700; font-size: 14px; text-decoration: none; padding: 12px 28px; border-radius: 6px; }}
+  .footer {{ margin-top: 28px; padding-top: 18px; border-top: 1px solid #1e293b; color: #64748b; font-size: 12px; line-height: 1.5; }}
+  .url-box {{ background: #080d16; border: 1px solid #1e293b; padding: 10px; border-radius: 4px; word-break: break-all; font-family: monospace; font-size: 12px; color: #00f0ff; margin-top: 12px; }}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="brand">🛡️ SecureSync</div>
+      <div class="sub">Zero-Trust Threat Defense Platform</div>
+    </div>
+    <div class="content">
+      <p>Hello <strong>{safe_name}</strong>,</p>
+      <p>A request was received to reset the password for your SecureSync cybersecurity portal account.</p>
+      <p style="margin: 24px 0;">
+        <a href="{reset_url}" class="btn">Reset Password &rarr;</a>
+      </p>
+      <p style="font-size: 13px; color: #94a3b8;">This recovery link expires in <strong>60 minutes</strong> and can only be used once.</p>
+      <div class="url-box">{reset_url}</div>
+    </div>
+    <div class="footer">
+      If you did not submit this request, no action is required. Your account remains secured.<br>
+      Automated Security Notification • SecureSync Threat Operations
+    </div>
+  </div>
+</body>
+</html>"""
+
+        msg.attach(MIMEText(text_body, 'plain'))
+        msg.attach(MIMEText(html_body, 'html'))
+
+        if use_ssl:
+            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=12)
+            server.ehlo()
+        else:
+            server = smtplib.SMTP(smtp_host, smtp_port, timeout=12)
+            server.ehlo()
+            if use_tls:
+                server.starttls()
+                server.ehlo()
+
+        if smtp_user and smtp_pass:
+            server.login(smtp_user, smtp_pass)
+
+        server.sendmail(mail_from, [recipient_email], msg.as_string())
+        server.quit()
+        app.logger.info(f"Password reset email dispatched successfully to {recipient_email}")
+        return True
+    except Exception as ex:
+        app.logger.error(f"Error dispatching password reset email to {recipient_email}: {ex}")
+        return False
+
+
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
     """Secure password reset request."""
@@ -429,47 +536,37 @@ def forgot_password():
 
     direct_reset_url = None
     if request.method == 'POST':
-        email = request.form.get('email', '').strip()
+        email = request.form.get('email', '').strip().replace('\x00', '')
         result = create_password_reset_token(email)
         if result:
             raw_token, username = result
-            direct_reset_url = url_for('reset_password', token=raw_token, _external=True)
+            # Construct production or local reset URL
+            base_url = (os.environ.get('APP_URL') or os.environ.get('RENDER_EXTERNAL_URL') or '').strip().rstrip('/')
+            if base_url:
+                reset_url = f"{base_url}/reset-password/{raw_token}"
+            else:
+                scheme = 'https' if (request.is_secure or os.environ.get('RENDER') or os.environ.get('SECURE_COOKIES', 'False').lower() in ('true', '1')) else request.scheme
+                reset_url = url_for('reset_password', token=raw_token, _external=True, _scheme=scheme)
 
             smtp_host = os.environ.get('SMTP_HOST')
             if smtp_host:
-                try:
-                    import smtplib
-                    from email.mime.text import MIMEText
-                    from email.mime.multipart import MIMEMultipart
-
-                    smtp_port = int(os.environ.get('SMTP_PORT', 587))
-                    smtp_user = os.environ.get('SMTP_USER')
-                    smtp_pass = os.environ.get('SMTP_PASSWORD') or os.environ.get('SMTP_PASS')
-                    mail_from = os.environ.get('SMTP_FROM', 'noreply@securesync.internal')
-
-                    msg = MIMEMultipart('alternative')
-                    msg['Subject'] = 'SecureSync – Password Recovery Link'
-                    msg['From'] = mail_from
-                    msg['To'] = email
-
-                    body = f"Hello {username},\n\nA password reset was requested for your SecureSync account.\nClick the link below within 1 hour:\n\n{direct_reset_url}\n\nIf you did not request this, please disregard."
-                    msg.attach(MIMEText(body, 'plain'))
-
-                    server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
-                    server.starttls()
-                    if smtp_user and smtp_pass:
-                        server.login(smtp_user, smtp_pass)
-                    server.sendmail(mail_from, [email], msg.as_string())
-                    server.quit()
-                except Exception as ex:
-                    app.logger.error(f"Error dispatching password reset email: {ex}")
+                send_password_reset_email(email, username, reset_url)
+                # In production when SMTP is configured, NEVER expose the token on screen
+                direct_reset_url = None
             else:
-                app.logger.info(f"[RESET TOKEN GENERATED] For {email}: {direct_reset_url}")
+                # Standalone local dev only: show token on UI only if not running on Render
+                if not os.environ.get('RENDER') and not os.environ.get('DATABASE_URL'):
+                    direct_reset_url = reset_url
+                    app.logger.info(f"[DEV RESET LINK] {email}: {reset_url}")
+                else:
+                    direct_reset_url = None
+                    app.logger.warning(f"Reset token generated for {email} but SMTP_HOST is not set on Render.")
 
         # Neutral response prevents email enumeration
         flash("If an account exists with that email, password recovery instructions have been sent. Please check your inbox.", "info")
 
     return render_template('forgot_password.html', direct_reset_url=direct_reset_url)
+
 
 
 @app.route('/reset-password/<token>', methods=['GET', 'POST'])
@@ -590,7 +687,7 @@ def scan_message():
             "message": "No message text provided in request body."
         }), 400
 
-    raw_text = data.get('message', '').strip()
+    raw_text = data.get('message', '').strip().replace('\x00', '')
     if not raw_text:
         return jsonify({
             "status": "error",
@@ -683,30 +780,51 @@ def scan_file():
         return jsonify({"status": "error", "message": "Empty filename"}), 400
 
     try:
-        content = file.read().decode('utf-8', errors='ignore')
+        raw_bytes = file.read()
+        if not raw_bytes:
+            return jsonify({"status": "error", "message": "Uploaded file is empty"}), 400
+
+        # Handle UTF-16 BOM or UTF-8 BOM
+        if raw_bytes.startswith(b'\xff\xfe') or raw_bytes.startswith(b'\xfe\xff'):
+            try:
+                content = raw_bytes.decode('utf-16')
+            except Exception:
+                content = raw_bytes.decode('utf-8', errors='ignore')
+        elif len(raw_bytes) > 2 and raw_bytes[1:2] == b'\x00' and raw_bytes[3:4] == b'\x00':
+            try:
+                content = raw_bytes.decode('utf-16')
+            except Exception:
+                content = raw_bytes.decode('utf-8', errors='ignore')
+        else:
+            content = raw_bytes.decode('utf-8-sig', errors='ignore')
+
+        # Fix NUL (0x00) parsing error by eliminating all null characters immediately
+        content = content.replace('\x00', '')
         lines = content.splitlines()
 
         messages_to_scan = []
 
-        if filename.endswith('.csv'):
+        if filename.lower().endswith('.csv'):
             import csv
             import io
             reader = csv.reader(io.StringIO(content))
             header = next(reader, None)
             text_col = 0
             if header:
-                lower_header = [h.strip().lower() for h in header]
+                lower_header = [h.strip().lower().replace('\x00', '') for h in header]
                 if 'message' in lower_header:
                     text_col = lower_header.index('message')
                 elif 'text' in lower_header:
                     text_col = lower_header.index('text')
             for row in reader:
-                if row and len(row) > text_col and row[text_col].strip():
-                    messages_to_scan.append({
-                        "sender": "CSV Record",
-                        "timestamp": "",
-                        "text": row[text_col].strip()
-                    })
+                if row and len(row) > text_col:
+                    clean_row_text = row[text_col].strip().replace('\x00', '')
+                    if clean_row_text:
+                        messages_to_scan.append({
+                            "sender": "CSV Record",
+                            "timestamp": "",
+                            "text": clean_row_text
+                        })
         else:
             # WhatsApp chat export parser (.txt)
             wa_pattern = re.compile(
@@ -715,7 +833,7 @@ def scan_file():
 
             current_msg = None
             for line in lines:
-                line_str = line.strip()
+                line_str = line.strip().replace('\x00', '')
                 if not line_str:
                     continue
                 match = wa_pattern.match(line_str)
@@ -724,8 +842,8 @@ def scan_file():
                         messages_to_scan.append(current_msg)
                     current_msg = {
                         "timestamp": match.group(1),
-                        "sender": match.group(2).strip(),
-                        "text": match.group(3).strip()
+                        "sender": match.group(2).strip().replace('\x00', ''),
+                        "text": match.group(3).strip().replace('\x00', '')
                     }
                 else:
                     if current_msg:
@@ -738,6 +856,7 @@ def scan_file():
                         })
             if current_msg:
                 messages_to_scan.append(current_msg)
+
 
         capped_messages = messages_to_scan[:200]
         results = []

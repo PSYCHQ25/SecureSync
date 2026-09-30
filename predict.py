@@ -78,7 +78,7 @@ class ScamDetector:
         """
         if not isinstance(text, str):
             return ""
-        text = text.lower().strip()
+        text = text.replace('\x00', '').lower().strip()
         text = re.sub(r'https?://\S+|www\.\S+', ' <url> ', text)
         text = re.sub(r'\+?\d[\d -]{7,}\d', ' <phone> ', text)
         text = re.sub(r'[\$£€₹]\s?\d+(?:,\d+)*(?:\.\d+)?', ' <currency> ', text)
@@ -113,8 +113,9 @@ class ScamDetector:
                 unique_urls.append(u)
 
         link_reports = []
+        clean_text_for_urls = text.replace('\x00', '')
         # HTML-escape the text first to neutralize any injected HTML/script tags (XSS defense)
-        safe_display_text = html.escape(text)
+        safe_display_text = html.escape(clean_text_for_urls)
 
         for raw_url in unique_urls:
             # Parse domain safely
@@ -331,7 +332,7 @@ class ScamDetector:
                 "error": "Message is empty. Please enter text to scan."
             }
 
-        original_text = text.strip()
+        original_text = text.replace('\x00', '').strip()
         cleaned_text = self.clean_text(original_text)
 
         # 1. Extract and quarantine links safely

@@ -22,6 +22,9 @@ import joblib
 # Ensure application modules can be imported
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import io
+from unittest.mock import patch, MagicMock
+
 from predict import ScamDetector, analyze_message, MODEL_PATH, METRICS_PATH
 from database import (
     init_db,
@@ -32,9 +35,13 @@ from database import (
     get_scan_by_id,
     get_user_stats,
     delete_user_account,
-    change_user_password
+    change_user_password,
+    create_password_reset_token,
+    verify_and_use_reset_token,
+    get_database_url
 )
-from app import app
+from app import app, send_password_reset_email
+
 
 
 class TestSecureSyncPipeline(unittest.TestCase):
@@ -346,6 +353,346 @@ class TestSecureSyncPipeline(unittest.TestCase):
         self.assertEqual(res_dash.status_code, 302)
         self.assertIn('/login', res_dash.headers.get('Location', ''))
 
+    # -------------------------------------------------------------------------
+    # 8. Password Recovery & SMTP Production Tests
+    # -------------------------------------------------------------------------
+    @patch('smtplib.SMTP')
+    def test_smtp_password_reset_email_dispatch(self, mock_smtp_cls):
+        """Verifies that send_password_reset_email connects via SMTP, uses TLS, and sends email."""
+        mock_server = MagicMock()
+        mock_smtp_cls.return_value = mock_server
+
+        with patch.dict(os.environ, {
+            'SMTP_HOST': 'smtp.render.internal',
+            'SMTP_PORT': '587',
+            'SMTP_USER': 'notifications@securesync.internal',
+            'SMTP_PASSWORD': 'super_secret_smtp_pass',
+            'SMTP_FROM': 'security@securesync.io'
+        }):
+            sent = send_password_reset_email(
+                recipient_email="analyst@example.internal",
+                username="SecAnalyst",
+                reset_url="https://securesync.onrender.com/reset-password/abc123token"
+            )
+            self.assertTrue(sent)
+            mock_smtp_cls.assert_called_with('smtp.render.internal', 587, timeout=12)
+            mock_server.starttls.assert_called()
+            mock_server.login.assert_called_with('notifications@securesync.internal', 'super_secret_smtp_pass')
+            mock_server.sendmail.assert_called()
+            mock_server.quit.assert_called()
+
+    @patch('app.send_password_reset_email')
+    def test_forgot_password_production_render_neutral_no_token_leak(self, mock_send_email):
+        """Verifies that in production/Render with SMTP, reset links are emailed and NEVER exposed in UI."""
+        mock_send_email.return_value = True
+        client = app.test_client()
+
+        # Register test account
+        u_name = "smtp_prod_user"
+        u_email = "smtp_prod@internal.test"
+        register_user(u_name, u_email, "OldPassword123!")
+
+        with patch.dict(os.environ, {
+            'RENDER': 'true',
+            'SMTP_HOST': 'smtp.sendgrid.net',
+            'RENDER_EXTERNAL_URL': 'https://securesync.onrender.com'
+        }):
+            res = client.post('/forgot-password', data={'email': u_email}, follow_redirects=True)
+            self.assertEqual(res.status_code, 200)
+            html_text = res.get_data(as_text=True)
+
+            # Security: Reset link must NEVER be present in the webpage response in production
+            self.assertNotIn('Password Reset Token Issued', html_text)
+            self.assertNotIn('/reset-password/', html_text)
+            # Must show neutral confirmation message
+            self.assertIn("password recovery instructions have been sent", html_text)
+
+            # Verify email was actually dispatched with the correct URL
+            self.assertTrue(mock_send_email.called)
+            call_args = mock_send_email.call_args[0]
+            self.assertEqual(call_args[0], u_email)
+            self.assertEqual(call_args[1], u_name)
+            reset_url = call_args[2]
+            self.assertTrue(reset_url.startswith('https://securesync.onrender.com/reset-password/'))
+
+            # Extract token from the reset URL and verify reset works
+            token = reset_url.split('/reset-password/')[-1]
+            res_reset = client.post(f'/reset-password/{token}', data={
+                'password': 'NewPassword456!',
+                'confirm_password': 'NewPassword456!'
+            }, follow_redirects=True)
+            self.assertEqual(res_reset.status_code, 200)
+
+            # Old password must fail authentication
+            old_auth = authenticate_user(u_name, "OldPassword123!")
+            self.assertIsNone(old_auth)
+
+            # New password must succeed
+            new_auth = authenticate_user(u_name, "NewPassword456!")
+            self.assertIsNotNone(new_auth)
+
+            # Single-use: Reusing token must fail
+            res_reuse = client.post(f'/reset-password/{token}', data={
+                'password': 'AnotherPassword789!',
+                'confirm_password': 'AnotherPassword789!'
+            }, follow_redirects=True)
+            self.assertIn("already been used", res_reuse.get_data(as_text=True))
+
+            # Cleanup
+            delete_user_account(new_auth['id'])
+
+    # -------------------------------------------------------------------------
+    # 9. Batch Scan NUL (0x00) Parsing Tests
+    # -------------------------------------------------------------------------
+    def test_batch_scan_csv_with_nul_bytes(self):
+        """Verifies that CSV files containing NUL (0x00) bytes are sanitized and parsed without error."""
+        client = app.test_client()
+
+        u_name = "batch_nul_user"
+        u_email = "batch_nul@internal.test"
+        register_user(u_name, u_email, "Password123!")
+        user = authenticate_user(u_name, "Password123!")
+
+        with client.session_transaction() as sess:
+            sess['user_id'] = user['id']
+            sess['username'] = user['username']
+
+        # Construct CSV with embedded NUL (0x00) characters
+        csv_data = (
+            "id,message\x00,status\n"
+            "1,Dear customer\x00 your account is locked. Verify at http://bit.ly/bank-fake\x00 now.,alert\n"
+            "2,Hey\x00 are we having dinner at 7pm tonight?,chat\n"
+        ).encode('utf-8')
+
+        res = client.post('/api/scan-file', data={
+            'file': (io.BytesIO(csv_data), 'batch_scans\x00.csv')
+        }, content_type='multipart/form-data')
+
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data['status'], 'success')
+        self.assertEqual(data['total_processed'], 2)
+        self.assertGreaterEqual(data['scams_detected'], 1)
+
+        # Scans must be in user's history
+        history = get_user_scans(user['id'])
+        self.assertEqual(len(history), 2)
+        # NUL bytes must be absent in saved message text
+        for item in history:
+            self.assertNotIn('\x00', item['submitted_message'])
+
+        delete_user_account(user['id'])
+
+    def test_batch_scan_whatsapp_txt_with_nul_bytes(self):
+        """Verifies that WhatsApp .txt exports containing NUL (0x00) bytes parse correctly."""
+        client = app.test_client()
+
+        u_name = "wa_nul_user"
+        u_email = "wa_nul@internal.test"
+        register_user(u_name, u_email, "Password123!")
+        user = authenticate_user(u_name, "Password123!")
+
+        with client.session_transaction() as sess:
+            sess['user_id'] = user['id']
+            sess['username'] = user['username']
+
+        # Construct WhatsApp transcript with NUL characters
+        txt_data = (
+            "[12/05/2026, 14:30:15] Unknown: Hi Mom\x00 I lost my phone. Urgently Zelle me $450 to pay tow truck.\n"
+            "[12/05/2026, 14:32:00] Alice: Sounds good\x00 see you tomorrow!\n"
+        ).encode('utf-8')
+
+        res = client.post('/api/scan-file', data={
+            'file': (io.BytesIO(txt_data), 'chat_export.txt')
+        }, content_type='multipart/form-data')
+
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data['status'], 'success')
+        self.assertEqual(data['total_processed'], 2)
+
+        delete_user_account(user['id'])
+
+    # -------------------------------------------------------------------------
+    # 10. Multi-User Isolation Tests
+    # -------------------------------------------------------------------------
+    def test_multi_user_isolation_strict(self):
+        """
+        Rigorous multi-tenant test: User A and User B must only see their own Scan History.
+        User B must never be able to access User A's history or individual scan records.
+        """
+        client_a = app.test_client()
+        client_b = app.test_client()
+
+        # Register User A & User B
+        u_a = register_user("analyst_alpha_iso", "alpha_iso@securesync.internal", "PassAlpha123!")
+        u_b = register_user("analyst_beta_iso", "beta_iso@securesync.internal", "PassBeta123!")
+        user_a = authenticate_user("analyst_alpha_iso", "PassAlpha123!")
+        user_b = authenticate_user("analyst_beta_iso", "PassBeta123!")
+
+        # Log in User A and scan 2 distinct messages
+        with client_a.session_transaction() as sess:
+            sess['user_id'] = user_a['id']
+            sess['username'] = user_a['username']
+
+        res_a1 = client_a.post('/api/scan', json={
+            "message": "Alpha Scam 1: IRS lawsuit alert. Call 800-555-0101 immediately."
+        })
+        scan_id_a1 = res_a1.get_json()['analysis']['scan_id']
+
+        res_a2 = client_a.post('/api/scan', json={
+            "message": "Alpha Scam 2: Your package is stuck. Pay $1.99 at http://tinyurl.com/pkg"
+        })
+        scan_id_a2 = res_a2.get_json()['analysis']['scan_id']
+
+        # Log in User B and scan 1 message
+        with client_b.session_transaction() as sess:
+            sess['user_id'] = user_b['id']
+            sess['username'] = user_b['username']
+
+        res_b1 = client_b.post('/api/scan', json={
+            "message": "Beta Scam 1: Congratulations! You won $10,000 Walmart gift card."
+        })
+        scan_id_b1 = res_b1.get_json()['analysis']['scan_id']
+
+        # 1. Check User A history: must contain ONLY a1 and a2; zero b1
+        hist_a_res = client_a.get('/api/history')
+        self.assertEqual(hist_a_res.status_code, 200)
+        hist_a_ids = [s['scan_id'] for s in hist_a_res.get_json()['history']]
+        self.assertIn(scan_id_a1, hist_a_ids)
+        self.assertIn(scan_id_a2, hist_a_ids)
+        self.assertNotIn(scan_id_b1, hist_a_ids)
+
+        # 2. Check User B history: must contain ONLY b1; zero a1 or a2
+        hist_b_res = client_b.get('/api/history')
+        self.assertEqual(hist_b_res.status_code, 200)
+        hist_b_ids = [s['scan_id'] for s in hist_b_res.get_json()['history']]
+        self.assertIn(scan_id_b1, hist_b_ids)
+        self.assertNotIn(scan_id_a1, hist_b_ids)
+        self.assertNotIn(scan_id_a2, hist_b_ids)
+
+        # 3. Direct ID access isolation: User B attempting to view User A's scan MUST return 404
+        forbidden_res = client_b.get(f'/api/scan/{scan_id_a1}')
+        self.assertEqual(forbidden_res.status_code, 404)
+
+        # 4. User A can view their own scan
+        allowed_res = client_a.get(f'/api/scan/{scan_id_a1}')
+        self.assertEqual(allowed_res.status_code, 200)
+
+        # 5. Isolated user stats
+        stats_a = client_a.get('/api/stats').get_json()['stats']
+        stats_b = client_b.get('/api/stats').get_json()['stats']
+        self.assertEqual(stats_a['total_scanned'], 2)
+        self.assertEqual(stats_b['total_scanned'], 1)
+
+        # Cleanup
+        delete_user_account(user_a['id'])
+        delete_user_account(user_b['id'])
+
+    # -------------------------------------------------------------------------
+    # 11. Complete Production Flow Test
+    # -------------------------------------------------------------------------
+    def test_complete_production_flow_persistence(self):
+        """
+        Tests the complete production cycle:
+        Register -> Login -> Analyze -> History -> Logout -> Login again -> Data persists
+        """
+        client = app.test_client()
+
+        # Step 1: Register
+        res_reg = client.post('/register', data={
+            'username': 'prod_lifecycle_user',
+            'email': 'lifecycle@securesync.internal',
+            'password': 'SecurePassword888!',
+            'confirm_password': 'SecurePassword888!',
+            'full_name': 'Lifecycle Analyst'
+        }, follow_redirects=False)
+        # Should redirect to login or dashboard
+        self.assertIn(res_reg.status_code, (302, 200))
+
+        # Step 2: Login
+        res_login = client.post('/login', data={
+            'identifier': 'prod_lifecycle_user',
+            'password': 'SecurePassword888!'
+        }, follow_redirects=True)
+        self.assertEqual(res_login.status_code, 200)
+
+        # Step 3: Analyze message
+        test_msg = "URGENT: Citibank security lockout alert. Confirm your account immediately at http://bit.ly/citi-fix"
+        res_scan = client.post('/api/scan', json={"message": test_msg})
+        self.assertEqual(res_scan.status_code, 200)
+        scan_data = res_scan.get_json()
+        scan_id = scan_data['analysis']['scan_id']
+
+        # Step 4: Verify in History
+        res_hist1 = client.get('/api/history')
+        self.assertEqual(res_hist1.status_code, 200)
+        hist_ids1 = [s['scan_id'] for s in res_hist1.get_json()['history']]
+        self.assertIn(scan_id, hist_ids1)
+
+        # Step 5: Logout
+        res_logout = client.get('/logout', follow_redirects=True)
+        self.assertEqual(res_logout.status_code, 200)
+
+        # Verify session is terminated (access to history must fail)
+        res_unauth = client.get('/api/history')
+        self.assertEqual(res_unauth.status_code, 401)
+
+        # Step 6: Login again
+        res_relogin = client.post('/login', data={
+            'identifier': 'lifecycle@securesync.internal',
+            'password': 'SecurePassword888!'
+        }, follow_redirects=True)
+        self.assertEqual(res_relogin.status_code, 200)
+
+        # Step 7: Verify data persists across login sessions
+        res_hist2 = client.get('/api/history')
+        self.assertEqual(res_hist2.status_code, 200)
+        hist_ids2 = [s['scan_id'] for s in res_hist2.get_json()['history']]
+        self.assertIn(scan_id, hist_ids2)
+
+        # Clean up
+        user = authenticate_user('prod_lifecycle_user', 'SecurePassword888!')
+        if user:
+            delete_user_account(user['id'])
+
+    # -------------------------------------------------------------------------
+    # 12. Neon PostgreSQL & Database Migrations Tests
+    # -------------------------------------------------------------------------
+    def test_database_migrations_and_neon_url_sslmode(self):
+        """Verifies database initialization idempotency and Neon PostgreSQL URL normalization."""
+        # Database init must be safe to run multiple times without raising errors
+        init_db()
+        init_db()
+
+        # Test Neon URL normalization with sslmode=require
+        neon_url = "postgres://user:pass@ep-cool-sample.us-east-2.aws.neon.tech/neondb"
+        with patch.dict(os.environ, {'DATABASE_URL': neon_url}):
+            normalized = get_database_url()
+            self.assertTrue(normalized.startswith('postgresql://'))
+            self.assertIn('sslmode=require', normalized)
+
+    # -------------------------------------------------------------------------
+    # 13. Stale Session Handling on Public Routes
+    # -------------------------------------------------------------------------
+    def test_stale_session_allows_public_routes(self):
+        """Verifies that an obsolete session does not block access to public pages like forgot-password."""
+        client = app.test_client()
+
+        with client.session_transaction() as sess:
+            sess['user_id'] = 8888888  # Non-existent user ID
+
+        # Must allow viewing forgot-password page
+        res_forgot = client.get('/forgot-password')
+        self.assertEqual(res_forgot.status_code, 200)
+
+        # Must allow viewing samples API
+        with client.session_transaction() as sess:
+            sess['user_id'] = 8888888
+        res_samples = client.get('/api/samples')
+        self.assertEqual(res_samples.status_code, 200)
+
 
 if __name__ == '__main__':
     unittest.main()
+
