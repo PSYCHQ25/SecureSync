@@ -11,6 +11,7 @@ Description: Standalone inference engine and threat explainability module.
 import os
 import re
 import json
+import html
 from urllib.parse import urlparse
 from typing import Dict, Any, List, Tuple
 import joblib
@@ -112,7 +113,8 @@ class ScamDetector:
                 unique_urls.append(u)
 
         link_reports = []
-        safe_display_text = text
+        # HTML-escape the text first to neutralize any injected HTML/script tags (XSS defense)
+        safe_display_text = html.escape(text)
 
         for raw_url in unique_urls:
             # Parse domain safely
@@ -146,7 +148,9 @@ class ScamDetector:
             })
 
             # Replace link in safe display text with quarantined tag
-            safe_display_text = safe_display_text.replace(raw_url, f"[QUARANTINED LINK: {defanged}]")
+            # Since safe_display_text is HTML-escaped, replace both raw and escaped forms
+            escaped_url = html.escape(raw_url)
+            safe_display_text = safe_display_text.replace(escaped_url, f"[QUARANTINED LINK: {defanged}]")
 
         return link_reports, safe_display_text
 
