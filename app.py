@@ -928,6 +928,63 @@ def health():
     })
 
 
+@app.route('/health/email-config')
+def health_email_config():
+    """
+    Safe diagnostic endpoint that reports which email environment variables
+    are present (keys only, never values) to debug production email delivery.
+    """
+    smtp_keys = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASSWORD', 'SMTP_PASS',
+                 'SMTP_FROM', 'SMTP_USE_SSL', 'SMTP_USE_TLS',
+                 'APP_URL', 'RENDER_EXTERNAL_URL', 'RENDER', 'DATABASE_URL']
+    config = {}
+    for key in smtp_keys:
+        val = os.environ.get(key)
+        if val:
+            # Mask the value: only show length and first/last char
+            masked = f"set ({len(val)} chars)"
+        else:
+            masked = "NOT SET"
+        config[key] = masked
+
+    # Test SMTP connectivity if SMTP_HOST is set
+    smtp_test = None
+    smtp_host = os.environ.get('SMTP_HOST')
+    if smtp_host:
+        try:
+            import smtplib
+            smtp_port = int(os.environ.get('SMTP_PORT', 587))
+            use_ssl = (os.environ.get('SMTP_USE_SSL', '').lower() in ('true', '1')) or (smtp_port == 465)
+            if use_ssl:
+                server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10)
+            else:
+                server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+                server.ehlo()
+                if smtp_port not in (25,):
+                    server.starttls()
+                    server.ehlo()
+
+            smtp_user = os.environ.get('SMTP_USER')
+            smtp_pass = os.environ.get('SMTP_PASSWORD') or os.environ.get('SMTP_PASS')
+            if smtp_user and smtp_pass:
+                server.login(smtp_user, smtp_pass)
+                smtp_test = "SMTP login OK"
+            else:
+                smtp_test = "SMTP connected but no credentials to test login"
+            server.quit()
+        except Exception as ex:
+            smtp_test = f"SMTP error: {str(ex)}"
+    else:
+        smtp_test = "SMTP_HOST not set – email dispatch disabled"
+
+    return jsonify({
+        "status": "ok",
+        "email_config": config,
+        "smtp_connectivity_test": smtp_test,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    })
+
+
 # -----------------------------------------------------------------------------
 # Security Headers & Error Handlers
 # -----------------------------------------------------------------------------
