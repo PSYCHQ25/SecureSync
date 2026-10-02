@@ -1,15 +1,16 @@
 """
 =============================================================================
-SecureSync – SMS & WhatsApp Scam Detection System
+SecureSync – Multi Detection System
 Script: app.py
 Description: Production-Ready Flask Web Application & REST API backend.
-             Hosts the cybersecurity dashboard, manages session scanning,
-             enforces multi-tenant user isolation, brute-force protection,
-             zero-trust link defanging, and real-time NLP/ML analysis endpoints.
+             Hosts the cybersecurity dashboard, manages multi-modal detection
+             (Text, Image, Audio, Video), session scanning, user isolation,
+             brute-force defense, zero-trust link defanging, and PDF reporting.
 =============================================================================
 """
 
 import os
+import io
 import re
 import json
 import time
@@ -28,11 +29,14 @@ from flask import (
     redirect,
     url_for,
     flash,
-    abort
+    abort,
+    send_file
 )
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from predict import analyze_message, METRICS_PATH
+from multimodal_detector import get_image_detector, get_audio_detector, get_video_detector
+from report_generator import generate_pdf_report
 from database import (
     init_db,
     authenticate_user,
@@ -46,7 +50,11 @@ from database import (
     create_password_reset_token,
     verify_and_use_reset_token,
     get_user_stats,
-    validate_email
+    validate_email,
+    clear_user_scans,
+    export_user_data,
+    get_user_privacy_settings,
+    update_user_privacy_settings
 )
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
@@ -62,7 +70,8 @@ app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
     SESSION_COOKIE_SECURE=os.environ.get('SECURE_COOKIES', 'False').lower() in ('true', '1') or os.environ.get('RENDER') is not None,
-    PERMANENT_SESSION_LIFETIME=timedelta(hours=12)
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=12),
+    MAX_CONTENT_LENGTH=50 * 1024 * 1024
 )
 
 # Initialize database schema permanently (never wiping on startup)
@@ -393,9 +402,64 @@ def history():
 @app.route('/account', methods=['GET'])
 @login_required
 def account():
-    """User account management page."""
+    """User account management & security settings page."""
     current_user = get_user_by_id(session['user_id'])
-    return render_template('account.html', current_user=current_user)
+    privacy_settings = get_user_privacy_settings(session['user_id'])
+    user_stats = get_user_stats(session['user_id'])
+    return render_template('account.html', current_user=current_user, privacy_settings=privacy_settings, user_stats=user_stats)
+
+
+@app.route('/account/update-settings', methods=['POST'])
+@login_required
+def update_settings():
+    """Updates user privacy, retention, and defensive security settings."""
+    auto_quarantine = request.form.get('auto_quarantine_links') == 'on'
+    sanitize_metadata = request.form.get('sanitize_metadata') == 'on'
+    try:
+        retention_days = int(request.form.get('retention_days', 90))
+    except (ValueError, TypeError):
+        retention_days = 90
+
+    settings = {
+        "auto_quarantine_links": auto_quarantine,
+        "sanitize_metadata": sanitize_metadata,
+        "retention_days": retention_days
+    }
+    update_user_privacy_settings(session['user_id'], settings)
+    flash("Security and privacy preferences updated successfully.", "success")
+    return redirect(url_for('account'))
+
+
+@app.route('/account/clear-history', methods=['POST'])
+@login_required
+def clear_history():
+    """Purges all user threat scans while keeping the account active."""
+    res = clear_user_scans(session['user_id'])
+    if res['success']:
+        flash("Your scan history has been permanently wiped.", "success")
+    else:
+        flash("Failed to wipe scan history.", "danger")
+    return redirect(url_for('account'))
+
+
+@app.route('/account/export-data', methods=['GET'])
+@login_required
+def export_data():
+    """GDPR/CCPA compliant export of all user activity and scans in JSON."""
+    data = export_user_data(session['user_id'])
+    if not data:
+        flash("Could not compile export data.", "danger")
+        return redirect(url_for('account'))
+
+    json_str = json.dumps(data, indent=2)
+    buffer = io.BytesIO(json_str.encode('utf-8'))
+    filename = f"securesync_data_export_user_{session['user_id']}_{int(time.time())}.json"
+    return send_file(
+        buffer,
+        mimetype='application/json',
+        as_attachment=True,
+        download_name=filename
+    )
 
 
 @app.route('/account/change-password', methods=['POST'])
@@ -636,9 +700,10 @@ def get_metrics():
 @app.route('/api/history', methods=['GET'])
 @login_required
 def get_history():
-    """Strictly returns past scan history belonging to the current user."""
+    """Strictly returns past scan history belonging to current user, with optional modality filter."""
     user_id = session.get('user_id')
-    history_records = get_user_scans(user_id, limit=50)
+    modality = request.args.get('modality')
+    history_records = get_user_scans(user_id, limit=100, modality=modality)
     return jsonify({
         "status": "success",
         "history": history_records
@@ -656,6 +721,242 @@ def get_single_scan(scan_id):
         "status": "success",
         "scan": scan
     })
+
+
+@app.route('/api/scan/<scan_id>/pdf', methods=['GET'])
+@login_required
+def export_scan_pdf(scan_id):
+    """Generates and downloads a formal forensic investigation report in PDF format."""
+    scan = get_scan_by_id(scan_id, session['user_id'])
+    if not scan:
+        return jsonify({"status": "error", "message": "Scan report not found or access denied."}), 404
+
+    analyst_name = session.get('full_name') or session.get('username') or "Security Analyst"
+    pdf_buffer = generate_pdf_report(scan, analyst_name=analyst_name)
+    clean_filename = f"securesync_forensic_report_{scan_id}.pdf"
+    return send_file(
+        pdf_buffer,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name=clean_filename
+    )
+
+
+@app.route('/api/scan/image', methods=['POST'])
+@login_required
+def scan_image():
+    """
+    Analyzes uploaded image for Quishing (QR code phishing), steganographic payloads,
+    fake banking / visual invoice lures, metadata tampering, and entropy anomalies.
+    """
+    user_id = session.get('user_id')
+    user = get_user_by_id(user_id)
+    if not user:
+        session.clear()
+        return jsonify({"status": "error", "message": "User session expired."}), 401
+
+    if is_scan_rate_limited(user['id']):
+        return jsonify({"status": "error", "message": "Scan rate limit reached. Please wait a moment."}), 429
+
+    if 'file' not in request.files:
+        return jsonify({"status": "error", "message": "No image file provided in upload."}), 400
+
+    file = request.files['file']
+    filename = file.filename or 'upload.jpg'
+    allowed_exts = ('.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp')
+    if not any(filename.lower().endswith(ext) for ext in allowed_exts):
+        return jsonify({"status": "error", "message": f"Unsupported image format. Allowed: {', '.join(allowed_exts)}"}), 400
+
+    raw_bytes = file.read()
+    if not raw_bytes:
+        return jsonify({"status": "error", "message": "Uploaded image file is empty."}), 400
+
+    if len(raw_bytes) > 15 * 1024 * 1024:
+        return jsonify({"status": "error", "message": "Image exceeds maximum size (15 MB)."}), 400
+
+    try:
+        detector = get_image_detector()
+        result = detector.analyze(raw_bytes, filename=filename)
+
+        # Update in-memory session statistics
+        stats["total_scanned"] += 1
+        if result["is_threat"]:
+            stats["suspicious_count"] += 1
+        else:
+            stats["legitimate_count"] += 1
+
+        summary_msg = f"Image Forensics: {filename} ({result['forensic_details'].get('dimensions', 'N/A')}, {result['forensic_details'].get('format', 'Img')})"
+        saved_scan_id = save_scan(
+            user_id=user['id'],
+            submitted_message=summary_msg,
+            risk_score=result['risk_score'],
+            risk_level=result['risk_level'],
+            threat_classification=result['classification'],
+            detection_reasons=result['reasons'],
+            suspicious_indicators=result['indicators'],
+            recommended_action=result['recommended_action'],
+            modality='image',
+            file_name=filename,
+            file_hash=result['forensic_details'].get('sha256', ''),
+            technical_details=result['forensic_details']
+        )
+        result['scan_id'] = saved_scan_id
+
+        user_stats = get_user_stats(user['id'])
+        user_stats['model_accuracy'] = stats.get('model_accuracy', 95.65)
+
+        return jsonify({
+            "status": "success",
+            "analysis": result,
+            "updated_stats": user_stats
+        })
+    except Exception as e:
+        app.logger.error(f"Image scan error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": f"Image forensic engine error: {str(e)}"}), 500
+
+
+@app.route('/api/scan/audio', methods=['POST'])
+@login_required
+def scan_audio():
+    """
+    Analyzes uploaded audio for synthetic voice cloning (Deepfake Audio),
+    vishing frequency artifacts, spectral roll-off anomalies, and ultrasonic carriers.
+    """
+    user_id = session.get('user_id')
+    user = get_user_by_id(user_id)
+    if not user:
+        session.clear()
+        return jsonify({"status": "error", "message": "User session expired."}), 401
+
+    if is_scan_rate_limited(user['id']):
+        return jsonify({"status": "error", "message": "Scan rate limit reached. Please wait a moment."}), 429
+
+    if 'file' not in request.files:
+        return jsonify({"status": "error", "message": "No audio file provided in upload."}), 400
+
+    file = request.files['file']
+    filename = file.filename or 'recording.wav'
+    allowed_exts = ('.wav', '.mp3', '.ogg', '.flac', '.m4a', '.aac')
+    if not any(filename.lower().endswith(ext) for ext in allowed_exts):
+        return jsonify({"status": "error", "message": f"Unsupported audio format. Allowed: {', '.join(allowed_exts)}"}), 400
+
+    raw_bytes = file.read()
+    if not raw_bytes:
+        return jsonify({"status": "error", "message": "Uploaded audio file is empty."}), 400
+
+    if len(raw_bytes) > 25 * 1024 * 1024:
+        return jsonify({"status": "error", "message": "Audio exceeds maximum size (25 MB)."}), 400
+
+    try:
+        detector = get_audio_detector()
+        result = detector.analyze(raw_bytes, filename=filename)
+
+        stats["total_scanned"] += 1
+        if result["is_threat"]:
+            stats["suspicious_count"] += 1
+        else:
+            stats["legitimate_count"] += 1
+
+        summary_msg = f"Audio Forensics: {filename} ({result['forensic_details'].get('format', 'Audio')}, {result['forensic_details'].get('duration_seconds', 0)}s)"
+        saved_scan_id = save_scan(
+            user_id=user['id'],
+            submitted_message=summary_msg,
+            risk_score=result['risk_score'],
+            risk_level=result['risk_level'],
+            threat_classification=result['classification'],
+            detection_reasons=result['reasons'],
+            suspicious_indicators=result['indicators'],
+            recommended_action=result['recommended_action'],
+            modality='audio',
+            file_name=filename,
+            file_hash=result['forensic_details'].get('sha256', ''),
+            technical_details=result['forensic_details']
+        )
+        result['scan_id'] = saved_scan_id
+
+        user_stats = get_user_stats(user['id'])
+        user_stats['model_accuracy'] = stats.get('model_accuracy', 95.65)
+
+        return jsonify({
+            "status": "success",
+            "analysis": result,
+            "updated_stats": user_stats
+        })
+    except Exception as e:
+        app.logger.error(f"Audio scan error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": f"Audio forensic engine error: {str(e)}"}), 500
+
+
+@app.route('/api/scan/video', methods=['POST'])
+@login_required
+def scan_video():
+    """
+    Analyzes uploaded video for synthetic deepfake manipulation, AI face synthesis tools,
+    container atom anomalies, audio-visual track desynchronization, and embedded phishing links.
+    """
+    user_id = session.get('user_id')
+    user = get_user_by_id(user_id)
+    if not user:
+        session.clear()
+        return jsonify({"status": "error", "message": "User session expired."}), 401
+
+    if is_scan_rate_limited(user['id']):
+        return jsonify({"status": "error", "message": "Scan rate limit reached. Please wait a moment."}), 429
+
+    if 'file' not in request.files:
+        return jsonify({"status": "error", "message": "No video file provided in upload."}), 400
+
+    file = request.files['file']
+    filename = file.filename or 'video.mp4'
+    allowed_exts = ('.mp4', '.webm', '.mkv', '.mov', '.avi')
+    if not any(filename.lower().endswith(ext) for ext in allowed_exts):
+        return jsonify({"status": "error", "message": f"Unsupported video format. Allowed: {', '.join(allowed_exts)}"}), 400
+
+    raw_bytes = file.read()
+    if not raw_bytes:
+        return jsonify({"status": "error", "message": "Uploaded video file is empty."}), 400
+
+    if len(raw_bytes) > 35 * 1024 * 1024:
+        return jsonify({"status": "error", "message": "Video exceeds maximum size (35 MB)."}), 400
+
+    try:
+        detector = get_video_detector()
+        result = detector.analyze(raw_bytes, filename=filename)
+
+        stats["total_scanned"] += 1
+        if result["is_threat"]:
+            stats["suspicious_count"] += 1
+        else:
+            stats["legitimate_count"] += 1
+
+        summary_msg = f"Video Forensics: {filename} ({result['forensic_details'].get('container', 'Video')})"
+        saved_scan_id = save_scan(
+            user_id=user['id'],
+            submitted_message=summary_msg,
+            risk_score=result['risk_score'],
+            risk_level=result['risk_level'],
+            threat_classification=result['classification'],
+            detection_reasons=result['reasons'],
+            suspicious_indicators=result['indicators'],
+            recommended_action=result['recommended_action'],
+            modality='video',
+            file_name=filename,
+            file_hash=result['forensic_details'].get('sha256', ''),
+            technical_details=result['forensic_details']
+        )
+        result['scan_id'] = saved_scan_id
+
+        user_stats = get_user_stats(user['id'])
+        user_stats['model_accuracy'] = stats.get('model_accuracy', 95.65)
+
+        return jsonify({
+            "status": "success",
+            "analysis": result,
+            "updated_stats": user_stats
+        })
+    except Exception as e:
+        app.logger.error(f"Video scan error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": f"Video forensic engine error: {str(e)}"}), 500
 
 
 @app.route('/api/scan', methods=['POST'])

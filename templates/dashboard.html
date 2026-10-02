@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SecureSync – Cybersecurity Threat Intelligence Dashboard</title>
+    <title>SecureSync – Multi Detection System | Threat Intelligence Console</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -34,7 +34,7 @@
             background: linear-gradient(180deg, rgba(17, 23, 38, 0.8) 0%, rgba(10, 14, 23, 0.6) 100%);
             border: 1px solid var(--border-color);
             border-radius: var(--radius-lg);
-            padding: 28px 32px;
+            padding: 24px 30px;
             margin-bottom: 24px;
             display: flex;
             justify-content: space-between;
@@ -43,14 +43,16 @@
             gap: 20px;
         }
         .welcome-hero h1 {
-            font-size: 1.85rem;
+            font-size: 1.8rem;
             color: var(--text-primary);
             margin-bottom: 6px;
         }
         .welcome-hero p {
             color: var(--text-secondary);
-            font-size: 0.95rem;
+            font-size: 0.92rem;
             margin: 0;
+            max-width: 680px;
+            line-height: 1.5;
         }
         .scan-id-badge {
             font-family: var(--font-mono);
@@ -64,62 +66,168 @@
             align-items: center;
             gap: 6px;
         }
-        .copy-btn {
-            background: transparent;
-            border: none;
-            color: var(--cyan);
-            cursor: pointer;
-            padding: 0 4px;
-        }
-        .copy-btn:hover {
-            color: white;
-        }
-        .recommended-action-box {
-            background: rgba(13, 17, 28, 0.9);
-            border: 1px solid var(--border-color);
-            border-left: 4px solid var(--cyan);
-            border-radius: var(--radius-md);
-            padding: 16px 20px;
-            margin-top: 18px;
-        }
-        .recommended-action-box.action-critical {
-            border-left-color: var(--red-threat);
-            background: rgba(255, 51, 102, 0.06);
-        }
-        .recommended-action-box.action-safe {
-            border-left-color: var(--green-safe);
-            background: rgba(0, 230, 153, 0.06);
-        }
-        .action-heading {
-            font-size: 0.85rem;
+        .modality-badge-indicator {
+            font-family: var(--font-mono);
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
-            margin-bottom: 6px;
+            font-size: 0.75rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            letter-spacing: 0.5px;
+        }
+        .modality-badge-text { background: rgba(0, 240, 255, 0.15); color: var(--cyan); border: 1px solid var(--cyan); }
+        .modality-badge-image { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid #c084fc; }
+        .modality-badge-audio { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid #fbbf24; }
+        .modality-badge-video { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid #f87171; }
+        
+        .media-dropzone {
+            border: 2px dashed rgba(0, 240, 255, 0.25);
+            background: rgba(10, 14, 23, 0.5);
+            border-radius: var(--radius-md);
+            padding: 36px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-top: 14px;
+        }
+        .media-dropzone:hover, .media-dropzone.dragover {
+            border-color: var(--cyan);
+            background: rgba(0, 240, 255, 0.05);
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.15);
+        }
+        .dropzone-icon {
+            color: var(--cyan);
+            margin-bottom: 12px;
+        }
+        .media-preview-container {
+            margin-top: 16px;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            display: none;
+        }
+        .media-preview-container.active {
+            display: block;
+        }
+        .media-preview-content {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 16px;
+            flex-wrap: wrap;
         }
-        .action-text {
+        .media-preview-thumb {
+            max-width: 140px;
+            max-height: 100px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            object-fit: cover;
+        }
+        .media-preview-audio {
+            width: 100%;
+            height: 38px;
+            border-radius: 6px;
+        }
+        .media-preview-video {
+            max-width: 260px;
+            max-height: 140px;
+            border-radius: 6px;
+        }
+        .media-info-text {
+            flex: 1;
+            min-width: 180px;
+        }
+        .media-info-name {
+            font-weight: 700;
+            color: #ffffff;
             font-size: 0.95rem;
-            color: var(--text-primary);
-            line-height: 1.5;
-            margin: 0;
+            word-break: break-all;
         }
-        .btn-table-action {
-            background: rgba(0, 240, 255, 0.1);
-            border: 1px solid rgba(0, 240, 255, 0.25);
-            color: var(--cyan);
-            padding: 4px 10px;
+        .media-info-size {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        .action-bar-report {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            padding-top: 18px;
+            border-top: 1px solid var(--border-color);
+            flex-wrap: wrap;
+        }
+        .btn-download-pdf {
+            background: linear-gradient(135deg, #00f0ff 0%, #0284c7 100%);
+            color: #06090e;
+            font-weight: 700;
+            padding: 10px 20px;
+            border-radius: var(--radius-sm);
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+        .btn-download-pdf:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 18px rgba(0, 240, 255, 0.4);
+            color: #000;
+        }
+        .technical-forensics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .tech-metric-card {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 8px 12px;
+        }
+        .tech-metric-label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            display: block;
+            margin-bottom: 2px;
+        }
+        .tech-metric-val {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            font-weight: 600;
+            word-break: break-all;
+        }
+        .history-filters {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .history-modality-tabs {
+            display: flex;
+            gap: 6px;
+        }
+        .history-mod-btn {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 4px 12px;
             border-radius: 4px;
             font-size: 0.8rem;
-            font-weight: 600;
             cursor: pointer;
             transition: var(--transition);
         }
-        .btn-table-action:hover {
-            background: var(--cyan);
-            color: #000;
+        .history-mod-btn.active, .history-mod-btn:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+            background: rgba(0,240,255,0.08);
         }
     </style>
 </head>
@@ -139,12 +247,12 @@
                     </div>
                     <div class="brand-text">
                         <span class="brand-title">SecureSync</span>
-                        <span class="brand-tag">Threat Defense Console</span>
+                        <span class="brand-tag">Multi Detection System</span>
                     </div>
                 </a>
             </div>
 
-            <!-- Standard SaaS Dashboard Navigation Links -->
+            <!-- Dashboard Navigation Links -->
             <nav class="dashboard-nav-links">
                 <a href="{{ url_for('dashboard') }}" class="active" title="Main Dashboard">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -155,26 +263,19 @@
                     </svg>
                     Dashboard
                 </a>
-                <a href="#message-input" id="nav-link-analyze" title="Analyze Message">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"/>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                    </svg>
-                    Analyze
-                </a>
-                <button type="button" id="btn-open-history" title="View My Scan History">
+                <button type="button" id="btn-open-history" title="View My Threat Scans">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"/>
                         <polyline points="12 6 12 12 16 14"/>
                     </svg>
-                    My History
+                    Scan History
                 </button>
-                <a href="{{ url_for('account') }}" title="Account Settings">
+                <a href="{{ url_for('account') }}" title="Security & Privacy Settings">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                         <circle cx="12" cy="7" r="4"/>
                     </svg>
-                    Account
+                    Settings & Privacy
                 </a>
             </nav>
 
@@ -212,11 +313,11 @@
         <section class="welcome-hero">
             <div>
                 <h1>Welcome, {{ current_user.username }}</h1>
-                <p>Zero-Trust Threat Defense & Message Intelligence. Inspect suspicious emails, SMS, and WhatsApp communications in real-time.</p>
+                <p>Enterprise Multi-Modal Threat Detection Console. Inspect suspicious communications, images, deepfake audio, and synthetic video in real-time with zero data leakage.</p>
             </div>
             <div class="nav-status">
                 <span class="pulse-indicator"></span>
-                <span class="status-label">DUAL ML & HEURISTIC ENGINE ONLINE</span>
+                <span class="status-label">MULTI-MODAL ZERO-TRUST ENGINE ONLINE</span>
             </div>
         </section>
 
@@ -229,7 +330,7 @@
                     </svg>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-label">Total Messages Scanned</span>
+                    <span class="stat-label">Total Assets Scanned</span>
                     <span class="stat-value" id="stat-total">0</span>
                 </div>
             </div>
@@ -243,7 +344,7 @@
                     </svg>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-label">Suspicious / Scams Detected</span>
+                    <span class="stat-label">Suspicious Threats Detected</span>
                     <span class="stat-value threat-text" id="stat-scam">0</span>
                 </div>
             </div>
@@ -256,7 +357,7 @@
                     </svg>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-label">Legitimate Messages</span>
+                    <span class="stat-label">Verified Clean Assets</span>
                     <span class="stat-value safe-text" id="stat-legit">0</span>
                 </div>
             </div>
@@ -269,550 +370,550 @@
                     </svg>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-label">Model Test Accuracy</span>
+                    <span class="stat-label">Model Accuracy & Confidence</span>
                     <span class="stat-value cyan-text" id="stat-accuracy">95.65%</span>
                 </div>
             </div>
         </section>
 
-        <!-- Mode Navigation Tabs -->
+        <!-- 5-Way Multi-Modal Workspace Tabs -->
         <div class="workspace-tabs">
-            <button type="button" class="tab-btn active" id="tab-btn-single">
+            <button type="button" class="tab-btn active" id="tab-btn-text" data-mode="text">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 </svg>
-                Single Message Inspector
+                📝 Text Detection
             </button>
-            <button type="button" class="tab-btn" id="tab-btn-bulk">
+            <button type="button" class="tab-btn" id="tab-btn-image" data-mode="image">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <polyline points="21 15 16 10 5 21"/>
+                </svg>
+                🖼️ Image Forensics (Quishing / Phish)
+            </button>
+            <button type="button" class="tab-btn" id="tab-btn-audio" data-mode="audio">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="23"/>
+                    <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+                🎙️ Audio (Deepfake Voice / Vishing)
+            </button>
+            <button type="button" class="tab-btn" id="tab-btn-video" data-mode="video">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="23 7 16 12 23 17 23 7"/>
+                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                </svg>
+                🎥 Video (Deepfake / Container)
+            </button>
+            <button type="button" class="tab-btn" id="tab-btn-bulk" data-mode="bulk">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                     <polyline points="14 2 14 8 20 8"/>
-                    <line x1="16" y1="13" x2="8" y2="13"/>
-                    <line x1="16" y1="17" x2="8" y2="17"/>
                 </svg>
-                Bulk Chat Scanner (WhatsApp .txt / CSV)
+                📁 Bulk Chat (WhatsApp / CSV)
             </button>
         </div>
 
-        <!-- Single Message Scanning Workspace -->
-        <div class="workspace-grid" id="single-workspace">
-            <!-- Left Console: Message Input and Controls -->
-            <section class="console-panel card">
-                <div class="panel-header">
-                    <div class="panel-title-wrap">
-                        <span class="panel-badge">INPUT CONSOLE</span>
-                        <h2>Message Inspector</h2>
-                    </div>
-                    <span class="helper-text">Paste SMS, Email, or WhatsApp text</span>
-                </div>
-
-                <!-- Quick Preset Samples -->
-                <div class="presets-section">
-                    <span class="presets-title">Quick Test Samples:</span>
-                    <div class="presets-container" id="presets-pills">
-                        <!-- Filled dynamically by script.js -->
-                        <button class="pill pill-scam" data-sample="bank_phish">🚨 Bank Phishing</button>
-                        <button class="pill pill-scam" data-sample="wa_family">📱 WhatsApp "Hi Mom"</button>
-                        <button class="pill pill-scam" data-sample="fake_lottery">🎁 $50k Prize Scam</button>
-                        <button class="pill pill-scam" data-sample="package_fraud">📦 USPS Redelivery</button>
-                        <button class="pill pill-legit" data-sample="real_otp">🔑 Legitimate 2FA</button>
-                        <button class="pill pill-legit" data-sample="real_chat">💬 Benign Chat</button>
-                    </div>
-                </div>
-
-                <!-- Textarea Area -->
-                <div class="input-container">
-                    <label for="message-input" style="display:block; font-weight:600; color:var(--text-primary); margin-bottom:8px;">
-                        Paste a suspicious email, SMS, or message
-                    </label>
-                    <textarea 
-                        id="message-input" 
-                        class="cyber-textarea" 
-                        rows="7" 
-                        placeholder="Paste a suspicious email, SMS, or message here... (e.g. 'Dear customer, your Chase account is suspended. Verify immediately at http://bit.ly/chase-lock or card will be blocked.')"
-                        maxlength="8000"
-                    ></textarea>
-                    
-                    <div class="textarea-footer">
-                        <div class="text-counts">
-                            <span id="char-count">0</span> characters | <span id="word-count">0</span> words
+        <!-- Multi-Modal Workspace Grid -->
+        <div class="workspace-grid">
+            
+            <!-- LEFT CONSOLE: Modality Input Panels -->
+            <div class="console-panel card" id="console-left-panel">
+                
+                <!-- 1. TEXT INSPECTOR PANEL -->
+                <div id="panel-text" class="modality-panel">
+                    <div class="panel-header">
+                        <div class="panel-title-wrap">
+                            <span class="panel-badge">NLP &amp; HEURISTIC ENGINE</span>
+                            <h2>Text Threat Inspector</h2>
                         </div>
-                        <button type="button" class="btn-text" id="btn-paste">
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                        <span class="helper-text">Inspect SMS, Phishing Emails, or WhatsApp</span>
+                    </div>
+
+                    <!-- Quick Preset Samples -->
+                    <div class="presets-section">
+                        <span class="presets-title">Quick Threat Samples:</span>
+                        <div class="presets-container" id="presets-pills">
+                            <button class="pill pill-scam" data-sample="bank_phish">🚨 Bank Phishing</button>
+                            <button class="pill pill-scam" data-sample="wa_family">📱 WhatsApp "Hi Mom"</button>
+                            <button class="pill pill-scam" data-sample="fake_lottery">🎁 $50k Prize Scam</button>
+                            <button class="pill pill-scam" data-sample="package_fraud">📦 USPS Redelivery</button>
+                            <button class="pill pill-legit" data-sample="real_otp">🔑 Legitimate 2FA</button>
+                            <button class="pill pill-legit" data-sample="real_chat">💬 Benign Chat</button>
+                        </div>
+                    </div>
+
+                    <div class="input-container">
+                        <label for="message-input" style="display:block; font-weight:600; color:var(--text-primary); margin-bottom:8px;">
+                            Paste suspicious message or email payload
+                        </label>
+                        <textarea 
+                            id="message-input" 
+                            class="cyber-textarea" 
+                            rows="7" 
+                            placeholder="Paste a suspicious SMS, email, or chat message here (e.g. 'URGENT: Your Chase account is locked. Verify at http://bit.ly/chase-lock or card will be blocked.')"
+                            maxlength="8000"
+                        ></textarea>
+                        
+                        <div class="textarea-footer">
+                            <div class="text-counts">
+                                <span id="char-count">0</span> characters | <span id="word-count">0</span> words
+                            </div>
+                            <button type="button" class="btn-text" id="btn-paste">Paste Clipboard</button>
+                        </div>
+                    </div>
+
+                    <div class="panel-actions">
+                        <button type="button" class="btn-primary" id="btn-scan">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
                             </svg>
-                            Paste Clipboard
+                            Analyze Text Threat
                         </button>
+                        <button type="button" class="btn-secondary" id="btn-clear">Clear Input</button>
                     </div>
                 </div>
 
-                <!-- Control Buttons -->
-                <div class="action-bar">
-                    <button type="button" class="btn-primary" id="btn-scan">
-                        <span class="btn-glow"></span>
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"/>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                        </svg>
-                        Analyze Message
-                    </button>
-                    <button type="button" class="btn-secondary" id="btn-clear">
-                        Clear
-                    </button>
+                <!-- 2. IMAGE FORENSICS PANEL -->
+                <div id="panel-image" class="modality-panel hidden">
+                    <div class="panel-header">
+                        <div class="panel-title-wrap">
+                            <span class="panel-badge">QUISHING &amp; STEGANOGRAPHY</span>
+                            <h2>Image Forensic Analyzer</h2>
+                        </div>
+                        <span class="helper-text">JPG, PNG, WEBP, GIF, BMP (Max 15 MB)</span>
+                    </div>
+
+                    <div class="presets-section">
+                        <span class="presets-title">Image Demonstration Vectors:</span>
+                        <div class="presets-container">
+                            <button type="button" class="pill pill-scam" id="demo-img-quishing">📱 QR Phish (Quishing)</button>
+                            <button type="button" class="pill pill-scam" id="demo-img-bank">🏦 Phishing Screenshot</button>
+                            <button type="button" class="pill pill-legit" id="demo-img-safe">✔ Clean Graphic</button>
+                        </div>
+                    </div>
+
+                    <div class="media-dropzone" id="image-dropzone">
+                        <div class="dropzone-icon">
+                            <svg viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <polyline points="21 15 16 10 5 21"/>
+                            </svg>
+                        </div>
+                        <h3 style="color:#ffffff; margin-bottom:6px; font-size:1.05rem;">Drag &amp; drop suspect image, or click to browse</h3>
+                        <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">Detects QR code phishing (quishing), fake banking receipts, steganographic payloads, and metadata tampering.</p>
+                        <input type="file" id="image-file-input" accept=".jpg,.jpeg,.png,.webp,.gif,.bmp" style="display:none;">
+                    </div>
+
+                    <div class="media-preview-container" id="image-preview-box">
+                        <div class="media-preview-content">
+                            <img id="image-preview-thumb" class="media-preview-thumb" src="" alt="Image preview">
+                            <div class="media-info-text">
+                                <div class="media-info-name" id="image-preview-name">image.png</div>
+                                <div class="media-info-size" id="image-preview-size">0 KB</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel-actions" style="margin-top: 18px;">
+                        <button type="button" class="btn-primary" id="btn-scan-image" disabled>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                            Analyze Image Forensics
+                        </button>
+                        <button type="button" class="btn-secondary" id="btn-clear-image">Clear File</button>
+                    </div>
                 </div>
 
-                <!-- Safe Sandbox Notice -->
-                <div class="quarantine-banner">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                    </svg>
-                    <span><strong>Link Quarantine Active:</strong> Links inside messages are defanged (hxxp://) and will never be fetched, pinged, or resolved.</span>
-                </div>
-            </section>
+                <!-- 3. AUDIO FORENSICS PANEL -->
+                <div id="panel-audio" class="modality-panel hidden">
+                    <div class="panel-header">
+                        <div class="panel-title-wrap">
+                            <span class="panel-badge">AI VOICE &amp; VISHING ENGINE</span>
+                            <h2>Audio Deepfake Detector</h2>
+                        </div>
+                        <span class="helper-text">WAV, MP3, OGG, FLAC, M4A, AAC (Max 25 MB)</span>
+                    </div>
 
-            <!-- Right Console: Live Threat Analysis Results -->
+                    <div class="presets-section">
+                        <span class="presets-title">Audio Demonstration Vectors:</span>
+                        <div class="presets-container">
+                            <button type="button" class="pill pill-scam" id="demo-aud-deepfake">🎙️ Synthetic Voice Clone</button>
+                            <button type="button" class="pill pill-scam" id="demo-aud-vishing">📞 Vishing Bank Call</button>
+                            <button type="button" class="pill pill-legit" id="demo-aud-safe">✔ Organic Voice</button>
+                        </div>
+                    </div>
+
+                    <div class="media-dropzone" id="audio-dropzone">
+                        <div class="dropzone-icon">
+                            <svg viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                <line x1="12" y1="19" x2="12" y2="23"/>
+                                <line x1="8" y1="23" x2="16" y2="23"/>
+                            </svg>
+                        </div>
+                        <h3 style="color:#ffffff; margin-bottom:6px; font-size:1.05rem;">Drag &amp; drop audio file, or click to browse</h3>
+                        <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">Detects neural vocoder cutoff (Tacotron/ElevenLabs), vishing social engineering, and acoustic steganography.</p>
+                        <input type="file" id="audio-file-input" accept=".wav,.mp3,.ogg,.flac,.m4a,.aac" style="display:none;">
+                    </div>
+
+                    <div class="media-preview-container" id="audio-preview-box">
+                        <div class="media-preview-content">
+                            <audio id="audio-preview-player" class="media-preview-audio" controls></audio>
+                            <div class="media-info-text">
+                                <div class="media-info-name" id="audio-preview-name">recording.wav</div>
+                                <div class="media-info-size" id="audio-preview-size">0 KB</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel-actions" style="margin-top: 18px;">
+                        <button type="button" class="btn-primary" id="btn-scan-audio" disabled>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                            Inspect Audio Forensics
+                        </button>
+                        <button type="button" class="btn-secondary" id="btn-clear-audio">Clear Audio</button>
+                    </div>
+                </div>
+
+                <!-- 4. VIDEO FORENSICS PANEL -->
+                <div id="panel-video" class="modality-panel hidden">
+                    <div class="panel-header">
+                        <div class="panel-title-wrap">
+                            <span class="panel-badge">NEURAL MEDIA &amp; CONTAINER</span>
+                            <h2>Video Deepfake Forensics</h2>
+                        </div>
+                        <span class="helper-text">MP4, WEBM, MKV, MOV, AVI (Max 35 MB)</span>
+                    </div>
+
+                    <div class="presets-section">
+                        <span class="presets-title">Video Demonstration Vectors:</span>
+                        <div class="presets-container">
+                            <button type="button" class="pill pill-scam" id="demo-vid-deepfake">🎥 AI Face Swap / Avatar</button>
+                            <button type="button" class="pill pill-scam" id="demo-vid-avsync">📹 AV Lip-Sync Anomaly</button>
+                            <button type="button" class="pill pill-legit" id="demo-vid-safe">✔ Authentic Recording</button>
+                        </div>
+                    </div>
+
+                    <div class="media-dropzone" id="video-dropzone">
+                        <div class="dropzone-icon">
+                            <svg viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <polygon points="23 7 16 12 23 17 23 7"/>
+                                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                            </svg>
+                        </div>
+                        <h3 style="color:#ffffff; margin-bottom:6px; font-size:1.05rem;">Drag &amp; drop video clip, or click to browse</h3>
+                        <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">Detects synthetic face pipelines (Roop/SadTalker/Wav2Lip), atom corruption, and video phishing overlays.</p>
+                        <input type="file" id="video-file-input" accept=".mp4,.webm,.mkv,.mov,.avi" style="display:none;">
+                    </div>
+
+                    <div class="media-preview-container" id="video-preview-box">
+                        <div class="media-preview-content">
+                            <video id="video-preview-player" class="media-preview-video" controls></video>
+                            <div class="media-info-text">
+                                <div class="media-info-name" id="video-preview-name">video.mp4</div>
+                                <div class="media-info-size" id="video-preview-size">0 KB</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel-actions" style="margin-top: 18px;">
+                        <button type="button" class="btn-primary" id="btn-scan-video" disabled>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                            Execute Video Forensics
+                        </button>
+                        <button type="button" class="btn-secondary" id="btn-clear-video">Clear Video</button>
+                    </div>
+                </div>
+
+                <!-- 5. BULK CHAT SCANNER PANEL -->
+                <div id="panel-bulk" class="modality-panel hidden">
+                    <div class="panel-header">
+                        <div class="panel-title-wrap">
+                            <span class="panel-badge">DATASET / CHAT PARSER</span>
+                            <h2>Bulk Conversation Scanner</h2>
+                        </div>
+                        <span class="helper-text">WhatsApp .txt exports or CSV message datasets</span>
+                    </div>
+
+                    <div class="presets-section">
+                        <span class="presets-title">Quick Action:</span>
+                        <button type="button" class="pill pill-scam" id="btn-load-demo-chat">Load WhatsApp Demo Chat (10 Msgs)</button>
+                    </div>
+
+                    <div class="media-dropzone" id="bulk-dropzone">
+                        <div class="dropzone-icon">
+                            <svg viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                        </div>
+                        <h3 style="color:#ffffff; margin-bottom:6px; font-size:1.05rem;">Drag &amp; drop chat export (.txt) or CSV, or click to browse</h3>
+                        <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">Scans complete chat transcripts with timeline reconstruction and multi-user risk filtering.</p>
+                        <input type="file" id="bulk-file-input" accept=".txt,.csv" style="display:none;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT CONSOLE: Threat Intelligence & Forensic Report -->
             <section class="results-panel card">
                 <div class="panel-header">
                     <div class="panel-title-wrap">
-                        <span class="panel-badge">ANALYSIS REPORT</span>
-                        <h2>Security Assessment</h2>
+                        <span class="panel-badge">INTELLIGENCE OUTPUT</span>
+                        <h2>Forensic Threat Report</h2>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span id="scan-id-display" class="scan-id-badge hidden">
-                            <span id="scan-id-text">SCN-STANDBY</span>
-                            <button type="button" class="copy-btn" id="btn-copy-scan-id" title="Copy Scan ID">📋</button>
-                        </span>
-                        <span id="scan-timestamp" class="timestamp">Standby</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="result-modality-badge" class="modality-badge-indicator modality-badge-text">TEXT</span>
+                        <div class="timestamp-box">
+                            <span class="indicator-dot"></span>
+                            <span id="scan-timestamp">Standby</span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Initial Idle State -->
-                <div id="idle-state" class="state-container">
-                    <div class="idle-illustration">
-                        <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                            <circle cx="12" cy="11" r="3"/>
-                            <path d="M12 14v2"/>
-                        </svg>
+                <!-- Standby State -->
+                <div class="state-container" id="idle-state">
+                    <div class="radar-scan">
+                        <div class="radar-sweep"></div>
                     </div>
-                    <h3>Engine Ready for Inspection</h3>
-                    <p>Enter an email, SMS, or WhatsApp message on the left or select a preset sample button to evaluate phishing intent, brand spoofing, and statistical scam probability.</p>
+                    <h3>Multi-Modal Engine Ready</h3>
+                    <p>Select any modality (Text, Image, Audio, Video) or upload an asset to initiate zero-trust threat investigation.</p>
                 </div>
 
-                <!-- Scanning / Loading State -->
-                <div id="loading-state" class="state-container hidden">
+                <!-- Loading Radar State -->
+                <div class="state-container hidden" id="loading-state">
                     <div class="radar-spinner"></div>
-                    <p class="loading-text">Analyzing linguistics, heuristics & link signatures...</p>
+                    <p class="loading-text" id="loading-status-text">Deconstructing payload &amp; computing neural signatures...</p>
                 </div>
 
                 <!-- Populated Threat Report State -->
-                <div id="result-state" class="result-content hidden">
-                    <!-- Primary Alert Warning / Safe Banner -->
-                    <div id="primary-banner" class="alert-banner">
-                        <div class="banner-icon-box" id="banner-icon"></div>
-                        <div class="banner-text-box">
-                            <h3 id="banner-heading">--</h3>
-                            <p id="banner-subtext">--</p>
+                <div class="report-content hidden" id="result-state">
+                    
+                    <!-- Scan Reference ID Banner -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+                        <div class="scan-id-badge" id="scan-id-display">
+                            <span>SCAN REF:</span>
+                            <strong id="scan-id-text">SCN-STANDBY</strong>
+                            <button type="button" class="copy-btn" id="btn-copy-scan-id" title="Copy Scan ID">📋</button>
+                        </div>
+                        <div id="target-asset-name" style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted);">
+                            Target: Message Payload
                         </div>
                     </div>
 
-                    <!-- Recommended Action Callout -->
-                    <div id="recommended-action-box" class="recommended-action-box">
-                        <div class="action-heading" id="action-heading">
-                            <span>🛡️ Recommended Action</span>
+                    <!-- Primary Verdict Alert Banner -->
+                    <div class="alert-banner" id="primary-banner">
+                        <div class="banner-icon" id="banner-icon"></div>
+                        <div class="banner-text">
+                            <h3 id="banner-heading">Analyzing...</h3>
+                            <p id="banner-subtext">Awaiting evaluation...</p>
+                        </div>
+                    </div>
+
+                    <!-- Risk Metrics Grid -->
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <span class="metric-label">Threat Classification</span>
+                            <div class="metric-highlight" id="result-classification">--</div>
+                        </div>
+
+                        <div class="metric-card">
+                            <span class="metric-label">Threat Score &amp; Confidence</span>
+                            <div class="metric-highlight" id="result-confidence">--%</div>
+                            <div class="progress-track">
+                                <div class="progress-fill" id="confidence-bar"></div>
+                            </div>
+                        </div>
+
+                        <div class="metric-card">
+                            <span class="metric-label">Risk Severity Level</span>
+                            <span class="risk-badge" id="result-risk">--</span>
+                        </div>
+                    </div>
+
+                    <!-- Recommended Action Directive Box -->
+                    <div class="recommended-action-box" id="recommended-action-box">
+                        <div class="action-heading">
+                            <span>🛡️ Defensive Action Protocol</span>
                         </div>
                         <p class="action-text" id="recommended-action-text">--</p>
                     </div>
 
-                    <!-- Metrics Grid: Risk Score, Risk Severity, Classification -->
-                    <div class="metrics-cards">
-                        <div class="metric-box">
-                            <span class="metric-title">Risk Score</span>
-                            <span class="metric-highlight" id="result-risk-score">--/100</span>
-                        </div>
-                        <div class="metric-box">
-                            <span class="metric-title">Risk Level</span>
-                            <span class="risk-badge" id="result-risk">LOW</span>
-                        </div>
-                        <div class="metric-box">
-                            <span class="metric-title">Threat Classification</span>
-                            <span class="metric-highlight" id="result-classification">--</span>
-                        </div>
-                    </div>
-
-                    <!-- Confidence Bar -->
-                    <div style="margin-top: 14px; margin-bottom: 18px;">
-                        <div style="display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 6px;">
-                            <span style="color: var(--text-secondary);">Model Detection Confidence:</span>
-                            <span id="result-confidence" style="font-family: var(--font-mono); font-weight: 700; color: var(--cyan);">--%</span>
-                        </div>
-                        <div class="confidence-bar-wrap">
-                            <div class="confidence-bar-fill" id="confidence-bar"></div>
-                        </div>
-                    </div>
-
-                    <!-- ML Probability Distribution -->
-                    <div class="prob-breakdown">
+                    <!-- Probability Distribution Bar (Text Mode) -->
+                    <div class="probability-section" id="probability-section">
                         <div class="prob-header">
-                            <span>Statistical NLP Confidence:</span>
-                            <span id="prob-ratio-text">Legit: --% | Scam: --%</span>
+                            <span class="prob-title">Neural Decision Balance</span>
+                            <span class="prob-ratio" id="prob-ratio-text">Legitimate: --% | Scam: --%</span>
                         </div>
-                        <div class="prob-dual-bar">
-                            <div class="prob-legit-fill" id="prob-legit-bar" style="width: 50%;"></div>
-                            <div class="prob-scam-fill" id="prob-scam-bar" style="width: 50%;"></div>
+                        <div class="dual-bar">
+                            <div class="bar-segment bar-legit" id="prob-legit-bar"></div>
+                            <div class="bar-segment bar-scam" id="prob-scam-bar"></div>
                         </div>
                     </div>
 
-                    <!-- Detection Reasons Section -->
-                    <div class="reasons-section">
-                        <h4>
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <line x1="12" y1="16" x2="12" y2="12"/>
-                                <line x1="12" y1="8" x2="12.01" y2="8"/>
-                            </svg>
-                            Detection Reasons
-                        </h4>
-                        <ul id="reasons-list" class="reasons-list">
+                    <!-- Technical Forensics Details (Entropy, Hashes, Codecs) -->
+                    <div class="section-container" id="technical-forensics-section" style="margin-top: 18px;">
+                        <span class="section-title">Technical Asset Forensics</span>
+                        <div class="technical-forensics-grid" id="technical-forensics-grid">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Identified Scam / Forensic Threat Indicators -->
+                    <div class="section-container" style="margin-top: 18px;">
+                        <span class="section-title">Identified Forensic Threat Indicators</span>
+                        <div class="indicators-container" id="indicators-list">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Quarantined Hyperlinks -->
+                    <div class="section-container hidden" id="links-section" style="margin-top: 18px;">
+                        <span class="section-title">Zero-Trust Quarantined Hyperlinks</span>
+                        <div class="links-list" id="links-container">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Explainability Reasons -->
+                    <div class="section-container" style="margin-top: 18px;">
+                        <span class="section-title">Reasoning &amp; Algorithmic Insights</span>
+                        <ul class="reasons-list" id="reasons-list">
                             <!-- Populated dynamically -->
                         </ul>
                     </div>
 
-                    <!-- Scam Indicators Detected Section -->
-                    <div class="indicators-section">
-                        <h4>
+                    <!-- Commercial Action Bar: Download PDF & Export JSON -->
+                    <div class="action-bar-report">
+                        <button type="button" class="btn-download-pdf" id="btn-download-pdf">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
                             </svg>
-                            Suspicious Indicators
-                        </h4>
-                        <div id="indicators-list" class="indicators-list">
-                            <!-- Populated dynamically -->
-                        </div>
-                    </div>
-
-                    <!-- Quarantined Links Analysis Section -->
-                    <div class="links-section" id="links-section">
-                        <h4>
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                            Download PDF Investigation Report
+                        </button>
+                        <button type="button" class="btn-secondary" id="btn-export-json">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
                             </svg>
-                            Quarantined Links & Domains (Non-Clickable)
-                        </h4>
-                        <div id="links-container">
-                            <!-- Populated dynamically -->
-                        </div>
+                            Export JSON
+                        </button>
                     </div>
                 </div>
             </section>
         </div>
 
-        <!-- Bulk Chat Scanning Workspace -->
-        <div class="bulk-workspace card hidden" id="bulk-workspace">
-            <div class="panel-header">
-                <div class="panel-title-wrap">
-                    <span class="panel-badge">BATCH FORENSIC ENGINE</span>
-                    <h2>Bulk WhatsApp & SMS Chat Inspector</h2>
+        <!-- Bulk Chat Results Section (Visible when bulk scan finishes) -->
+        <div class="bulk-results-wrapper hidden" id="bulk-results-panel" style="margin-top: 24px;">
+            <div class="card">
+                <div class="panel-header">
+                    <div class="panel-title-wrap">
+                        <span class="panel-badge">BULK CONVERSATION FORENSICS</span>
+                        <h2>Chat Inspection Findings</h2>
+                    </div>
+                    <button type="button" class="btn-primary" id="btn-export-bulk-results">Export Findings (JSON)</button>
                 </div>
-                <span class="helper-text">Upload exported .txt chat or CSV file</span>
-            </div>
 
-            <div class="bulk-body">
-                <!-- Dropzone Area -->
-                <div class="dropzone" id="bulk-dropzone">
-                    <input type="file" id="bulk-file-input" accept=".txt,.csv" style="display: none;">
-                    <div class="dropzone-content">
-                        <div class="dropzone-icon">
-                            <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.8">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="17 8 12 3 7 8"/>
-                                <line x1="12" y1="3" x2="12" y2="15"/>
-                            </svg>
-                        </div>
-                        <h3>Drag & Drop WhatsApp Chat (.txt) or Batch SMS (.csv)</h3>
-                        <p>Or browse your computer to upload a exported conversation file.</p>
-                        <div class="dropzone-actions">
-                            <button type="button" class="btn-primary" id="btn-browse-file">
-                                Browse File
-                            </button>
-                            <button type="button" class="btn-secondary" id="btn-load-demo-chat">
-                                🚀 Load Test WhatsApp Chat
-                            </button>
-                        </div>
+                <div class="bulk-summary-bar">
+                    <div class="bulk-stat">
+                        <span class="bulk-stat-label">Total Messages</span>
+                        <span class="bulk-stat-val" id="bulk-total">0</span>
+                    </div>
+                    <div class="bulk-stat">
+                        <span class="bulk-stat-label">Suspicious Threats</span>
+                        <span class="bulk-stat-val threat-text" id="bulk-scams">0</span>
+                    </div>
+                    <div class="bulk-stat">
+                        <span class="bulk-stat-label">Verified Clean</span>
+                        <span class="bulk-stat-val safe-text" id="bulk-legit">0</span>
+                    </div>
+                    <div class="bulk-stat">
+                        <span class="bulk-stat-label">Threat Percentage</span>
+                        <span class="bulk-stat-val" id="bulk-threat-level">0%</span>
                     </div>
                 </div>
 
-                <!-- Bulk Loading Radar State -->
-                <div id="bulk-loading" class="state-container hidden">
-                    <div class="radar-spinner"></div>
-                    <p class="loading-text">Running batch NLP parsing across chat records...</p>
+                <div class="bulk-filter-bar" style="margin: 18px 0 12px;">
+                    <div class="filter-group">
+                        <button class="filter-btn active" data-filter="all">All Messages (<span id="count-all">0</span>)</button>
+                        <button class="filter-btn" data-filter="scam">Threats Only (<span id="count-scam">0</span>)</button>
+                        <button class="filter-btn" data-filter="legit">Legitimate Only (<span id="count-legit">0</span>)</button>
+                    </div>
                 </div>
 
-                <!-- Bulk Results Container -->
-                <div id="bulk-results" class="bulk-results-area hidden">
-                    <!-- Batch Overview Cards -->
-                    <div class="bulk-summary-cards">
-                        <div class="bulk-stat-card">
-                            <span class="bulk-stat-num" id="bulk-total">0</span>
-                            <span class="bulk-stat-label">Total Messages</span>
-                        </div>
-                        <div class="bulk-stat-card">
-                            <span class="bulk-stat-num threat-text" id="bulk-scams">0</span>
-                            <span class="bulk-stat-label">Scams Detected</span>
-                        </div>
-                        <div class="bulk-stat-card">
-                            <span class="bulk-stat-num safe-text" id="bulk-legit">0</span>
-                            <span class="bulk-stat-label">Safe Verified</span>
-                        </div>
-                        <div class="bulk-stat-card">
-                            <span class="bulk-stat-num cyan-text" id="bulk-threat-level">LOW</span>
-                            <span class="bulk-stat-label">Batch Threat Index</span>
-                        </div>
-                    </div>
-
-                    <!-- Filter & Action Controls -->
-                    <div class="table-toolbar">
-                        <div class="filter-group">
-                            <button type="button" class="filter-btn active" data-filter="all">All (<span id="count-all">0</span>)</button>
-                            <button type="button" class="filter-btn" data-filter="scam">Threats (<span id="count-scam">0</span>)</button>
-                            <button type="button" class="filter-btn" data-filter="legit">Safe (<span id="count-legit">0</span>)</button>
-                        </div>
-                        <button type="button" class="btn-secondary" id="btn-export-results">
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="7 10 12 15 17 10"/>
-                                <line x1="12" y1="15" x2="12" y2="3"/>
-                            </svg>
-                            Export Findings (JSON)
-                        </button>
-                    </div>
-
-                    <!-- Parsed Messages Table -->
-                    <div class="table-responsive">
-                        <table class="bulk-table">
-                            <thead>
-                                <tr>
-                                    <th>Verdict</th>
-                                    <th>Sender</th>
-                                    <th>Timestamp</th>
-                                    <th>Message Snippet</th>
-                                    <th>Risk Level</th>
-                                </tr>
-                            </thead>
-                            <tbody id="bulk-table-body">
-                                <!-- Populated dynamically -->
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="table-responsive">
+                    <table class="bulk-table">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Participant / Time</th>
+                                <th>Message Snippet</th>
+                                <th>Threat Assessment</th>
+                                <th>Detected Indicators</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bulk-table-body">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
 
-        <!-- Educational & Model Architecture Section -->
+        <!-- Educational & Multi-Modal Architecture Section -->
         <section class="edu-section card" style="margin-top: 24px;">
             <div class="edu-header">
                 <div>
-                    <span class="panel-badge">CYBERSECURITY EDUCATION & ML ARCHITECTURE</span>
-                    <h2>How SecureSync Works Under the Hood</h2>
+                    <span class="panel-badge">ARCHITECTURE &amp; BENCHMARKS</span>
+                    <h2>SecureSync Multi-Modal Threat Detection Pipeline</h2>
                 </div>
-                <button type="button" class="btn-text" id="toggle-edu-btn">Toggle Details</button>
+                <button type="button" class="btn-text" id="toggle-edu-btn">Toggle Architecture</button>
             </div>
 
             <div class="edu-content" id="edu-content">
-                <!-- 7-Stage Workflow -->
                 <div class="workflow-steps">
                     <div class="step-card">
                         <div class="step-num">1</div>
-                        <div class="step-title">Data Ingestion</div>
-                        <div class="step-desc">Curated dataset of 110+ SMS & WhatsApp scams and legitimate messages.</div>
+                        <div class="step-title">Text Engine</div>
+                        <div class="step-desc">TF-IDF Vectorization with Logistic Regression, heuristic rule matching, and URL defanging.</div>
                     </div>
                     <div class="step-card">
                         <div class="step-num">2</div>
-                        <div class="step-title">Preprocessing</div>
-                        <div class="step-desc">Case normalization, tokenizing URLs, phones, and currency tokens with zero test leakage.</div>
+                        <div class="step-title">Image Forensics</div>
+                        <div class="step-desc">Quishing QR extraction, trailing byte inspection past EOF markers, and Shannon entropy analysis.</div>
                     </div>
                     <div class="step-card">
                         <div class="step-num">3</div>
-                        <div class="step-title">NLP Features</div>
-                        <div class="step-desc">TF-IDF Vectorization converting unigrams and bigrams into weighted numerical vectors.</div>
+                        <div class="step-title">Audio Forensics</div>
+                        <div class="step-desc">FFT spectral roll-off analysis, zero-crossing rate dynamics, and synthetic voice vocoder cutoff detection.</div>
                     </div>
                     <div class="step-card">
                         <div class="step-num">4</div>
-                        <div class="step-title">Multi-Model Benchmarking</div>
-                        <div class="step-desc">Supervised classification comparing Logistic Regression, Naive Bayes, Linear SVM, and Random Forest.</div>
+                        <div class="step-title">Video Forensics</div>
+                        <div class="step-desc">ISO BMFF atom tree verification, encoder tool signatures (Roop/SadTalker), and AV sync drift assessment.</div>
                     </div>
                     <div class="step-card">
                         <div class="step-num">5</div>
-                        <div class="step-title">Model Testing</div>
-                        <div class="step-desc">Evaluation on unseen test data measuring Precision, Recall, and F1-score with 5-fold CV.</div>
-                    </div>
-                    <div class="step-card">
-                        <div class="step-num">6</div>
-                        <div class="step-title">Scam Detection</div>
-                        <div class="step-desc">Hybrid inference combining statistical ML with 10 heuristic social engineering indicator rules.</div>
-                    </div>
-                    <div class="step-card">
-                        <div class="step-num">7</div>
-                        <div class="step-title">User Alert</div>
-                        <div class="step-desc">Actionable threat advisory, confidence score, and zero-execution quarantined link inspection.</div>
-                    </div>
-                </div>
-
-                <!-- Multi-Model Benchmark Comparison Table -->
-                <div class="matrix-table-wrap" style="margin-top: 24px;">
-                    <h3 style="margin-bottom: 12px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
-                        <span>🏆 Multi-Algorithm Benchmark Comparison (Evaluated on Unseen Test Partition)</span>
-                    </h3>
-                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 16px;">
-                        All models evaluated using balanced class weighting and tested on identical held-out test splits. 
-                        <strong>Recall is the primary security criterion:</strong> catching 100% of malicious attacks ensures zero phishing messages evade detection.
-                    </p>
-                    <table class="bulk-table" style="width: 100%;">
-                        <thead>
-                            <tr>
-                                <th>Algorithm / Model</th>
-                                <th>Test Accuracy</th>
-                                <th>Precision</th>
-                                <th>Recall</th>
-                                <th>F1-Score</th>
-                                <th>5-Fold CV F1</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="model-comparison-table-body">
-                            <!-- Populated dynamically from /api/metrics -->
-                            <tr>
-                                <td><strong>Logistic Regression</strong></td>
-                                <td>95.65%</td>
-                                <td>91.67%</td>
-                                <td style="color: var(--green-safe); font-weight: 700;">100.00%</td>
-                                <td>95.65%</td>
-                                <td>92.82%</td>
-                                <td><span class="severity-pill sev-low" style="background: rgba(0, 240, 255, 0.15); color: var(--cyan); border: 1px solid var(--cyan);">★ Champion</span></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Linear Support Vector (Calibrated)</strong></td>
-                                <td>95.65%</td>
-                                <td>91.67%</td>
-                                <td style="color: var(--green-safe); font-weight: 700;">100.00%</td>
-                                <td>95.65%</td>
-                                <td>91.65%</td>
-                                <td><span class="severity-pill sev-low">Candidate</span></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Multinomial Naive Bayes</strong></td>
-                                <td>91.30%</td>
-                                <td>84.62%</td>
-                                <td style="color: var(--green-safe); font-weight: 700;">100.00%</td>
-                                <td>91.67%</td>
-                                <td>90.71%</td>
-                                <td><span class="severity-pill sev-low">Candidate</span></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Random Forest</strong></td>
-                                <td>91.30%</td>
-                                <td>100.00%</td>
-                                <td>81.82%</td>
-                                <td>90.00%</td>
-                                <td>88.29%</td>
-                                <td><span class="severity-pill sev-low">Candidate</span></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Decision Tree</strong></td>
-                                <td>91.30%</td>
-                                <td>100.00%</td>
-                                <td>81.82%</td>
-                                <td>90.00%</td>
-                                <td>79.14%</td>
-                                <td><span class="severity-pill sev-low">Candidate</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- 2-Column Info: Confusion Matrix & Attack Mechanics -->
-                <div class="edu-grid" style="margin-top: 24px;">
-                    <div class="edu-col">
-                        <h3>Champion Evaluation & Confusion Matrix</h3>
-                        <p>In cybersecurity, <strong>Recall</strong> is critical: a false negative means a malicious phishing scam slips into the victim's inbox unnoticed.</p>
-                        
-                        <div class="matrix-table-wrap">
-                            <table class="matrix-table">
-                                <thead>
-                                    <tr>
-                                        <th>Metric</th>
-                                        <th>Value</th>
-                                        <th>Cybersecurity Meaning</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><strong>Accuracy</strong></td>
-                                        <td id="m-acc">95.65%</td>
-                                        <td>Overall correct predictions on unseen data</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Precision</strong></td>
-                                        <td id="m-prec">91.67%</td>
-                                        <td>Low false alarms (minimizes flagging real OTPs)</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Recall</strong></td>
-                                        <td id="m-rec">100.0%</td>
-                                        <td>Catches malicious attacks before they harm users</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>F1-Score</strong></td>
-                                        <td id="m-f1">95.65%</td>
-                                        <td>Harmonic mean balancing precision and recall</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-
-                            <div class="matrix-grid-visual">
-                                <div class="matrix-quadrant quad-tn">
-                                    <span class="quad-label">True Negatives (TN)</span>
-                                    <span class="quad-val" id="cm-tn">11</span>
-                                    <span class="quad-desc">Legitimate Correctly Verified</span>
-                                </div>
-                                <div class="matrix-quadrant quad-fp">
-                                    <span class="quad-label">False Positives (FP)</span>
-                                    <span class="quad-val" id="cm-fp">1</span>
-                                    <span class="quad-desc">False Alarm (Type I Error)</span>
-                                </div>
-                                <div class="matrix-quadrant quad-fn">
-                                    <span class="quad-label">False Negatives (FN)</span>
-                                    <span class="quad-val" id="cm-fn">0</span>
-                                    <span class="quad-desc">Scam Bypassed (Type II Error)</span>
-                                </div>
-                                <div class="matrix-quadrant quad-tp">
-                                    <span class="quad-label">True Positives (TP)</span>
-                                    <span class="quad-val" id="cm-tp">11</span>
-                                    <span class="quad-desc">Scam Caught & Quarantined</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="edu-col">
-                        <h3>Scam Tactics & System Safeguards</h3>
-                        <div class="tactics-list">
-                            <div class="tactic-item">
-                                <strong>Artificial Urgency:</strong> Scammers simulate fake crises ("account suspended within 2 hours", "power disconnect") to bypass logical skepticism.
-                            </div>
-                            <div class="tactic-item">
-                                <strong>Authority & Intimidation:</strong> Impersonating IRS, sheriff, or bank fraud teams to induce panic compliance.
-                            </div>
-                            <div class="tactic-item">
-                                <strong>Zero-Trust Link Quarantine:</strong> Web addresses are defanged (hxxp://) and non-clickable to protect security analysts and students from malicious payload delivery.
-                            </div>
-                            <div class="tactic-item warning-item">
-                                <strong>Important Disclaimer:</strong> Machine learning models are probabilistic. A prediction of "Legitimate" does not guarantee absolute safety. Always verify sensitive requests out-of-band through official phone numbers.
-                            </div>
-                        </div>
+                        <div class="step-title">PDF Intelligence</div>
+                        <div class="step-desc">Cryptographically signed, commercial-style PDF reports generated on-demand via ReportLab.</div>
                     </div>
                 </div>
             </div>
@@ -820,36 +921,51 @@
     </main>
 
     <footer class="footer">
-        <p>&copy; 2026 <strong>SecureSync</strong> – Threat Defense & Scam Intelligence System. All rights reserved.</p>
-        <p class="disclaimer-text">All messages analyzed are processed safely in-memory with zero outbound network fetching. Cryptographic PBKDF2:SHA-256 salted credentials with strict tenant data isolation.</p>
+        <p>&copy; 2026 <strong>SecureSync – Multi Detection System</strong>. Enterprise Threat Defense &amp; Media Intelligence. All rights reserved.</p>
+        <p class="disclaimer-text">Multi-tenant user data isolation with salted PBKDF2:SHA-256 credentials. Zero-trust link defanging protects security analysts from outbound exploitation.</p>
     </footer>
 
-    <!-- User Scan History Modal (Requirement 9: My Scan History) -->
+    <!-- User Scan History Modal -->
     <div class="modal-overlay hidden" id="history-modal">
-        <div class="modal-card card" style="max-width: 1050px;">
+        <div class="modal-card card" style="max-width: 1080px;">
             <div class="modal-header">
                 <div class="panel-title-wrap">
-                    <span class="panel-badge">AUDIT TRAIL</span>
-                    <h3>My Scan History</h3>
+                    <span class="panel-badge">AUDIT TRAIL &amp; ARCHIVE</span>
+                    <h3>Threat Scan History</h3>
                 </div>
                 <button type="button" class="btn-modal-close" id="btn-close-history">&times;</button>
             </div>
             <div class="modal-body">
+                <div class="history-filters">
+                    <div class="history-modality-tabs">
+                        <button type="button" class="history-mod-btn active" data-mod="all">All Assets</button>
+                        <button type="button" class="history-mod-btn" data-mod="text">📝 Text</button>
+                        <button type="button" class="history-mod-btn" data-mod="image">🖼️ Image</button>
+                        <button type="button" class="history-mod-btn" data-mod="audio">🎙️ Audio</button>
+                        <button type="button" class="history-mod-btn" data-mod="video">🎥 Video</button>
+                    </div>
+                    <div>
+                        <input type="text" id="history-search-input" class="cyber-input" placeholder="Search Scan ID or keyword..." style="padding: 5px 12px; font-size: 0.8rem; width: 220px;">
+                    </div>
+                </div>
+
                 <div id="history-loading" class="state-container hidden">
                     <div class="radar-spinner"></div>
-                    <p class="loading-text">Loading your past forensic scans from database...</p>
+                    <p class="loading-text">Loading historical threat reports from database...</p>
                 </div>
+
                 <div class="table-responsive" id="history-table-container">
                     <table class="bulk-table">
                         <thead>
                             <tr>
-                                <th>Date</th>
-                                <th>Scan ID</th>
+                                <th>Timestamp</th>
+                                <th>Modality</th>
+                                <th>Scan Ref ID</th>
                                 <th>Risk Level</th>
-                                <th>Risk Score</th>
-                                <th>Threat Type</th>
-                                <th>Message Preview</th>
-                                <th>Details</th>
+                                <th>Score</th>
+                                <th>Classification</th>
+                                <th>Target Asset Preview</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="history-table-body">
@@ -861,12 +977,12 @@
         </div>
     </div>
 
-    <!-- Scan Detail Modal (Opens when user clicks Details) -->
+    <!-- Scan Detail Modal -->
     <div class="modal-overlay hidden" id="scan-detail-modal">
-        <div class="modal-card card" style="max-width: 800px;">
+        <div class="modal-card card" style="max-width: 840px;">
             <div class="modal-header">
                 <div class="panel-title-wrap">
-                    <span class="panel-badge">FORENSIC BREAKDOWN</span>
+                    <span class="panel-badge">FORENSIC AUDIT REPORT</span>
                     <h3 id="modal-scan-id-title">Scan Details</h3>
                 </div>
                 <button type="button" class="btn-modal-close" id="btn-close-scan-detail">&times;</button>

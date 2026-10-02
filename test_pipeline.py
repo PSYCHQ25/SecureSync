@@ -18,6 +18,10 @@ import sys
 import unittest
 import json
 import joblib
+import math
+import struct
+import wave
+from PIL import Image
 
 # Ensure application modules can be imported
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -26,6 +30,16 @@ import io
 from unittest.mock import patch, MagicMock
 
 from predict import ScamDetector, analyze_message, MODEL_PATH, METRICS_PATH
+from multimodal_detector import (
+    get_image_detector,
+    get_audio_detector,
+    get_video_detector,
+    calculate_entropy,
+    ImageThreatDetector,
+    AudioThreatDetector,
+    VideoThreatDetector
+)
+from report_generator import generate_pdf_report
 from database import (
     init_db,
     register_user,
@@ -38,7 +52,11 @@ from database import (
     change_user_password,
     create_password_reset_token,
     verify_and_use_reset_token,
-    get_database_url
+    get_database_url,
+    clear_user_scans,
+    export_user_data,
+    update_user_privacy_settings,
+    get_user_privacy_settings
 )
 from app import app, send_password_reset_email
 
@@ -692,7 +710,300 @@ class TestSecureSyncPipeline(unittest.TestCase):
         res_samples = client.get('/api/samples')
         self.assertEqual(res_samples.status_code, 200)
 
+    # -------------------------------------------------------------------------
+    # 14. Multi-Modal Forensic Detection Engines
+    # -------------------------------------------------------------------------
+    def test_calculate_entropy_mathematical_properties(self):
+        """Verifies Shannon entropy calculation on deterministic byte sequences."""
+        # Empty payload
+        self.assertEqual(calculate_entropy(b''), 0.0)
+        # Uniform zero bytes -> zero entropy
+        self.assertEqual(calculate_entropy(b'\x00' * 500), 0.0)
+        # High entropy: all 256 byte values distributed uniformly
+        full_spectrum = bytes(range(256)) * 4
+        entropy = calculate_entropy(full_spectrum)
+        self.assertAlmostEqual(entropy, 8.0, places=2)
+
+    def test_image_threat_detector_clean_and_stego(self):
+        """Verifies image analysis on clean images and detects trailing steganographic payloads."""
+        detector = get_image_detector()
+
+        # 1. Clean image
+        clean_img = Image.new('RGB', (80, 80), color=(30, 90, 150))
+        clean_buf = io.BytesIO()
+        clean_img.save(clean_buf, format='PNG')
+        clean_bytes = clean_buf.getvalue()
+
+        clean_res = detector.analyze(clean_bytes, 'clean_badge.png')
+        self.assertEqual(clean_res['modality'], 'image')
+        self.assertEqual(clean_res['risk_level'], 'LOW')
+        self.assertFalse(clean_res['is_threat'])
+        self.assertLess(clean_res['risk_score'], 30)
+
+        # 2. JPEG with trailing hidden steganographic payload & phishing domain
+        stego_img = Image.new('RGB', (80, 80), color=(100, 50, 50))
+        stego_buf = io.BytesIO()
+        stego_img.save(stego_buf, format='JPEG')
+        stego_bytes = stego_buf.getvalue() + b"\r\nCONFIDENTIAL PAYLOAD: https://fake-credential-update.secure-bank.xyz/verify-now"
+
+        stego_res = detector.analyze(stego_bytes, 'invoice_scan.jpg')
+        self.assertEqual(stego_res['modality'], 'image')
+        self.assertGreaterEqual(stego_res['risk_score'], 50)
+        indicator_names = [ind.get('name', '') for ind in stego_res['indicators']]
+        self.assertTrue(
+            any('Steganographic' in n or 'URL' in n or 'Phishing' in n for n in indicator_names),
+            f"Expected stego or URL indicator, got: {indicator_names}"
+        )
+
+    def test_audio_threat_detector_signal_processing(self):
+        """Verifies synthetic voice detection heuristics using WAV signal analysis."""
+        detector = get_audio_detector()
+
+        # Synthesize 0.5s 440Hz sine wave tone in standard PCM WAV
+        wav_buf = io.BytesIO()
+        with wave.open(wav_buf, 'wb') as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(16000)
+            sample_count = 8000
+            samples = bytearray()
+            for i in range(sample_count):
+                sample_val = int(12000 * math.sin(2 * math.pi * 440 * i / 16000))
+                samples.extend(struct.pack('<h', sample_val))
+            wav_file.writeframes(samples)
+
+        wav_bytes = wav_buf.getvalue()
+        audio_res = detector.analyze(wav_bytes, 'customer_call.wav')
+
+        self.assertEqual(audio_res['modality'], 'audio')
+        self.assertIn('spectral_rolloff_hz', audio_res['forensic_details'])
+        self.assertIn('zero_crossing_rate', audio_res['forensic_details'])
+        self.assertIn('rms_volume', audio_res['forensic_details'])
+        self.assertIn('risk_score', audio_res)
+
+    def test_video_threat_detector_container_and_markers(self):
+        """Verifies ISO BMFF MP4 container inspection and synthetic generator marker detection."""
+        detector = get_video_detector()
+
+        # Construct synthetic MP4 container with ftyp and moov containing SadTalker tag
+        ftyp_payload = b'isom\x00\x00\x02\x00isomiso2mp41'
+        ftyp_box = struct.pack('>I4s', len(ftyp_payload) + 8, b'ftyp') + ftyp_payload
+        moov_payload = b'mvhd....SadTalker AI Deepfake Generator V2.0....'
+        moov_box = struct.pack('>I4s', len(moov_payload) + 8, b'moov') + moov_payload
+        mdat_payload = b'mdat_raw_video_frames_stream_data_test_12345678'
+        mdat_box = struct.pack('>I4s', len(mdat_payload) + 8, b'mdat') + mdat_payload
+        mp4_bytes = ftyp_box + moov_box + mdat_box
+
+        video_res = detector.analyze(mp4_bytes, 'executive_interview.mp4')
+        self.assertEqual(video_res['modality'], 'video')
+        self.assertEqual(video_res['forensic_details'].get('encoder_software'), 'SADTALKER')
+        self.assertGreaterEqual(video_res['risk_score'], 50)
+        indicator_names = [ind.get('name', '') for ind in video_res['indicators']]
+        self.assertTrue(any('Synthesis' in n or 'Deepfake' in n for n in indicator_names))
+
+    # -------------------------------------------------------------------------
+    # 15. PDF Threat Report Generation
+    # -------------------------------------------------------------------------
+    def test_generate_pdf_report_structure(self):
+        """Verifies PDF report synthesis produces a valid, secure PDF document."""
+        mock_scan = {
+            'scan_id': 'TEST-SEC-99887',
+            'timestamp': '2026-10-03 02:00:00 UTC',
+            'modality': 'image',
+            'risk_score': 82,
+            'verdict': 'MALICIOUS',
+            'confidence': 0.94,
+            'submitted_message': 'suspicious_payload.jpg [SHA256: 7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069]',
+            'defanged_message': 'suspicious_payload.jpg',
+            'indicators': [
+                {'name': 'Steganographic Trailing Data', 'severity': 'CRITICAL', 'explanation': 'Hidden bytes detected past EOF.'},
+                {'name': 'Embedded Phishing URL', 'severity': 'HIGH', 'explanation': 'Phishing domain reference identified.'}
+            ],
+            'technical_details': {
+                'file_name': 'suspicious_payload.jpg',
+                'file_hash': '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069',
+                'entropy': 7.91,
+                'metrics': {'format': 'JPEG', 'trailing_bytes_detected': True}
+            }
+        }
+        user_profile = {'username': 'lead_investigator', 'email': 'investigator@securesync.internal'}
+
+        pdf_stream = generate_pdf_report(mock_scan, user_profile)
+        self.assertTrue(hasattr(pdf_stream, 'getvalue'))
+        pdf_bytes = pdf_stream.getvalue()
+        self.assertTrue(pdf_bytes.startswith(b'%PDF-'))
+        self.assertGreater(len(pdf_bytes), 1500)
+
+    # -------------------------------------------------------------------------
+    # 16. Multi-Modal Upload API Endpoints & History Filtering
+    # -------------------------------------------------------------------------
+    def test_multimodal_api_scans_and_modality_filtering(self):
+        """Verifies /api/scan/image, audio, and video upload endpoints and modality filtering."""
+        client = app.test_client()
+
+        # Register and login user
+        u_name = "multimodal_analyst"
+        u_email = "multimodal@securesync.internal"
+        register_user(u_name, u_email, "SecurePassword123!")
+        user = authenticate_user(u_name, "SecurePassword123!")
+
+        with client.session_transaction() as sess:
+            sess['user_id'] = user['id']
+            sess['username'] = user['username']
+
+        # 1. Image upload scan
+        img = Image.new('RGB', (60, 60), color=(10, 50, 100))
+        img_buf = io.BytesIO()
+        img.save(img_buf, format='PNG')
+        img_bytes = img_buf.getvalue()
+
+        res_img = client.post('/api/scan/image', data={
+            'file': (io.BytesIO(img_bytes), 'test_sample.png')
+        }, content_type='multipart/form-data')
+        self.assertEqual(res_img.status_code, 200)
+        data_img = res_img.get_json()
+        self.assertEqual(data_img['status'], 'success')
+        self.assertEqual(data_img['analysis']['modality'], 'image')
+        img_scan_id = data_img['analysis']['scan_id']
+
+        # 2. Audio upload scan
+        wav_buf = io.BytesIO()
+        with wave.open(wav_buf, 'wb') as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(16000)
+            wav_file.writeframes(struct.pack('<h', 0) * 1000)
+        aud_bytes = wav_buf.getvalue()
+
+        res_aud = client.post('/api/scan/audio', data={
+            'file': (io.BytesIO(aud_bytes), 'voice_memo.wav')
+        }, content_type='multipart/form-data')
+        self.assertEqual(res_aud.status_code, 200)
+        data_aud = res_aud.get_json()
+        self.assertEqual(data_aud['analysis']['modality'], 'audio')
+
+        # 3. Video upload scan
+        ftyp_payload = b'isom\x00\x00\x02\x00isomiso2mp41'
+        ftyp_box = struct.pack('>I4s', len(ftyp_payload) + 8, b'ftyp') + ftyp_payload
+        mdat_payload = b'video_data_sample_12345678'
+        mdat_box = struct.pack('>I4s', len(mdat_payload) + 8, b'mdat') + mdat_payload
+        vid_bytes = ftyp_box + mdat_box
+
+        res_vid = client.post('/api/scan/video', data={
+            'file': (io.BytesIO(vid_bytes), 'briefing.mp4')
+        }, content_type='multipart/form-data')
+        self.assertEqual(res_vid.status_code, 200)
+        data_vid = res_vid.get_json()
+        self.assertEqual(data_vid['analysis']['modality'], 'video')
+
+        # 4. Modality filter test in /api/history
+        res_hist_img = client.get('/api/history?modality=image')
+        self.assertEqual(res_hist_img.status_code, 200)
+        hist_items = res_hist_img.get_json()['history']
+        self.assertGreaterEqual(len(hist_items), 1)
+        for item in hist_items:
+            self.assertEqual(item['modality'], 'image')
+
+        # 5. PDF download test for this scan
+        res_pdf = client.get(f'/api/scan/{img_scan_id}/pdf')
+        self.assertEqual(res_pdf.status_code, 200)
+        self.assertEqual(res_pdf.content_type, 'application/pdf')
+        self.assertTrue(res_pdf.data.startswith(b'%PDF-'))
+
+        # Cleanup
+        delete_user_account(user['id'])
+
+    # -------------------------------------------------------------------------
+    # 17. Multi-Tenant PDF Isolation Test
+    # -------------------------------------------------------------------------
+    def test_pdf_report_multi_tenant_isolation(self):
+        """Verifies User B cannot access User A's PDF report."""
+        client_a = app.test_client()
+        client_b = app.test_client()
+
+        u_a = register_user("pdf_alpha_user", "alpha_pdf@internal.test", "AlphaPass123!")
+        u_b = register_user("pdf_beta_user", "beta_pdf@internal.test", "BetaPass123!")
+        user_a = authenticate_user("pdf_alpha_user", "AlphaPass123!")
+        user_b = authenticate_user("pdf_beta_user", "BetaPass123!")
+
+        with client_a.session_transaction() as sess:
+            sess['user_id'] = user_a['id']
+            sess['username'] = user_a['username']
+
+        res_scan = client_a.post('/api/scan', json={
+            "message": "Alpha Confidential: Urgent wire transfer needed immediately."
+        })
+        scan_id_a = res_scan.get_json()['analysis']['scan_id']
+
+        with client_b.session_transaction() as sess:
+            sess['user_id'] = user_b['id']
+            sess['username'] = user_b['username']
+
+        # User B attempting to download User A's PDF must return 404
+        res_b_attempt = client_b.get(f'/api/scan/{scan_id_a}/pdf')
+        self.assertEqual(res_b_attempt.status_code, 404)
+
+        # Cleanup
+        delete_user_account(user_a['id'])
+        delete_user_account(user_b['id'])
+
+    # -------------------------------------------------------------------------
+    # 18. Privacy Settings & Data Governance Endpoints
+    # -------------------------------------------------------------------------
+    def test_privacy_settings_and_data_governance(self):
+        """Verifies privacy preferences updating, data export (GDPR), and scan clearing."""
+        client = app.test_client()
+
+        u_name = "privacy_officer"
+        u_email = "privacy@securesync.internal"
+        register_user(u_name, u_email, "PrivacyPass123!")
+        user = authenticate_user(u_name, "PrivacyPass123!")
+
+        with client.session_transaction() as sess:
+            sess['user_id'] = user['id']
+            sess['username'] = user['username']
+
+        # 1. Update privacy settings
+        res_update = client.post('/account/update-settings', data={
+            'retention_days': '60',
+            'auto_quarantine_links': 'on',
+            'sanitize_metadata': 'on'
+        }, follow_redirects=True)
+        self.assertEqual(res_update.status_code, 200)
+
+        # Verify updated settings in database
+        updated_settings = get_user_privacy_settings(user['id'])
+        self.assertEqual(updated_settings['retention_days'], 60)
+        self.assertTrue(updated_settings['auto_quarantine_links'])
+        self.assertTrue(updated_settings['sanitize_metadata'])
+
+        # 2. Perform a scan to ensure history exists
+        client.post('/api/scan', json={"message": "Security check: account update required."})
+        self.assertGreater(len(get_user_scans(user['id'])), 0)
+
+        # 3. Export data (GDPR archive)
+        res_export = client.get('/account/export-data')
+        self.assertEqual(res_export.status_code, 200)
+        self.assertIn('application/json', res_export.content_type)
+        export_payload = json.loads(res_export.data)
+        self.assertIn('user_profile', export_payload)
+        self.assertIn('scan_records', export_payload)
+        self.assertEqual(export_payload['user_profile']['username'], u_name)
+
+        # 4. Clear history
+        res_clear = client.post('/account/clear-history', follow_redirects=True)
+        self.assertEqual(res_clear.status_code, 200)
+
+        # Verify scan history is now empty while user account remains intact
+        scans_after_clear = get_user_scans(user['id'])
+        self.assertEqual(len(scans_after_clear), 0)
+        self.assertIsNotNone(authenticate_user(u_name, "PrivacyPass123!"))
+
+        # Cleanup
+        delete_user_account(user['id'])
+
 
 if __name__ == '__main__':
     unittest.main()
+
 

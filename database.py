@@ -17,7 +17,7 @@ import hashlib
 import secrets
 import sqlite3
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, List, Tuple
 from urllib.parse import urlparse
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -169,6 +169,12 @@ def init_db():
             # Safe column additions if needed (non-destructive migrations)
             cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name VARCHAR(150);')
             cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT \'Security Analyst\';')
+            cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS privacy_settings TEXT DEFAULT \'{"auto_quarantine_links": true, "sanitize_metadata": true, "retention_days": 90}\';')
+            cursor.execute('ALTER TABLE scans ADD COLUMN IF NOT EXISTS modality VARCHAR(20) DEFAULT \'text\';')
+            cursor.execute('ALTER TABLE scans ADD COLUMN IF NOT EXISTS file_name VARCHAR(255) DEFAULT \'\';')
+            cursor.execute('ALTER TABLE scans ADD COLUMN IF NOT EXISTS file_hash VARCHAR(64) DEFAULT \'\';')
+            cursor.execute('ALTER TABLE scans ADD COLUMN IF NOT EXISTS technical_details TEXT DEFAULT \'{}\';')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_scans_modality ON scans(modality);')
             # Clean up obsolete legacy tables if present
             cursor.execute('DROP TABLE IF EXISTS scan_history;')
         else:
@@ -181,6 +187,7 @@ def init_db():
                     password_hash TEXT NOT NULL,
                     full_name TEXT,
                     role TEXT DEFAULT 'Security Analyst',
+                    privacy_settings TEXT DEFAULT '{"auto_quarantine_links": true, "sanitize_metadata": true, "retention_days": 90}',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             ''')
@@ -197,6 +204,10 @@ def init_db():
                     detection_reasons TEXT NOT NULL,
                     suspicious_indicators TEXT NOT NULL,
                     recommended_action TEXT NOT NULL,
+                    modality TEXT DEFAULT 'text',
+                    file_name TEXT DEFAULT '',
+                    file_hash TEXT DEFAULT '',
+                    technical_details TEXT DEFAULT '{}',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 );
@@ -214,13 +225,32 @@ def init_db():
                 );
             ''')
 
+            # Non-destructive SQLite column additions for existing databases
+            cursor.execute("PRAGMA table_info(scans)")
+            scan_cols = [row[1] for row in cursor.fetchall()]
+            if 'modality' not in scan_cols:
+                cursor.execute("ALTER TABLE scans ADD COLUMN modality TEXT DEFAULT 'text';")
+            if 'file_name' not in scan_cols:
+                cursor.execute("ALTER TABLE scans ADD COLUMN file_name TEXT DEFAULT '';")
+            if 'file_hash' not in scan_cols:
+                cursor.execute("ALTER TABLE scans ADD COLUMN file_hash TEXT DEFAULT '';")
+            if 'technical_details' not in scan_cols:
+                cursor.execute("ALTER TABLE scans ADD COLUMN technical_details TEXT DEFAULT '{}';")
+
+            cursor.execute("PRAGMA table_info(users)")
+            user_cols = [row[1] for row in cursor.fetchall()]
+            if 'privacy_settings' not in user_cols:
+                cursor.execute("ALTER TABLE users ADD COLUMN privacy_settings TEXT DEFAULT '{\"auto_quarantine_links\": true, \"sanitize_metadata\": true, \"retention_days\": 90}';")
+
             # SQLite Performance & Data Integrity Indexes
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_scans_user_id ON scans(user_id);')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_scans_created_at ON scans(created_at);')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_scans_modality ON scans(modality);')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_password_resets_token_hash ON password_resets(token_hash);')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_password_resets_user_id ON password_resets(user_id);')
+
             # Clean up obsolete legacy tables if present
             cursor.execute('DROP TABLE IF EXISTS scan_history;')
 
@@ -502,9 +532,12 @@ def verify_and_use_reset_token(raw_token: str, new_password: str) -> Dict[str, A
 # -----------------------------------------------------------------------------
 def save_scan(user_id: int, submitted_message: str, risk_score: int, risk_level: str,
               threat_classification: str, detection_reasons: List[str],
-              suspicious_indicators: List[Dict[str, Any]], recommended_action: str) -> str:
+              suspicious_indicators: List[Dict[str, Any]], recommended_action: str,
+              modality: str = 'text', file_name: str = '', file_hash: str = '',
+              technical_details: Optional[Dict[str, Any]] = None) -> str:
     """
     Saves a complete scan report linked to a user. Returns the generated unique scan_id.
+    Supports multi-modal threats (text, image, audio, video).
     Validates that user_id exists in the users table before insertion to enforce referential integrity.
     """
     if not user_id:
@@ -525,34 +558,50 @@ def save_scan(user_id: int, submitted_message: str, risk_score: int, risk_level:
         if not cursor.fetchone():
             raise ValueError(f"User with ID {user_id} does not exist in the database.")
 
-        scan_id = f"SCN-{uuid.uuid4().hex[:12].upper()}"
+        clean_modality = (modality or 'text').lower()
+        if clean_modality.startswith('image'):
+            prefix = "SCN-IMG"
+        elif clean_modality.startswith('audio'):
+            prefix = "SCN-AUD"
+        elif clean_modality.startswith('video'):
+            prefix = "SCN-VID"
+        else:
+            prefix = "SCN"
+
+        scan_id = f"{prefix}-{uuid.uuid4().hex[:10].upper()}"
+
         # Sanitize any NUL (0x00) characters to ensure compatibility across PostgreSQL and SQLite
         clean_msg = (submitted_message or '').replace('\x00', '')
         clean_class = (threat_classification or '').replace('\x00', '')
         clean_risk = (risk_level or '').replace('\x00', '')
         clean_action = (recommended_action or '').replace('\x00', '')
+        clean_fname = (file_name or '').replace('\x00', '')
+        clean_fhash = (file_hash or '').replace('\x00', '')
         clean_reasons = [r.replace('\x00', '') if isinstance(r, str) else r for r in (detection_reasons or [])]
         clean_indicators = suspicious_indicators if suspicious_indicators is not None else []
+        clean_tech = technical_details if technical_details is not None else {}
 
         reasons_json = json.dumps(clean_reasons).replace('\x00', '')
         indicators_json = json.dumps(clean_indicators).replace('\x00', '')
+        tech_json = json.dumps(clean_tech).replace('\x00', '')
 
         cursor.execute(f"""
             INSERT INTO scans (
                 scan_id, user_id, submitted_message, risk_score, risk_level,
                 threat_classification, detection_reasons, suspicious_indicators,
-                recommended_action
-            ) VALUES ({p}, {p}, {p}, {p}, {p}, {p}, {p}, {p}, {p})
+                recommended_action, modality, file_name, file_hash, technical_details
+            ) VALUES ({p}, {p}, {p}, {p}, {p}, {p}, {p}, {p}, {p}, {p}, {p}, {p}, {p})
         """, (
             scan_id, user_id, clean_msg, int(risk_score), clean_risk,
-            clean_class, reasons_json, indicators_json, clean_action
+            clean_class, reasons_json, indicators_json, clean_action,
+            clean_modality, clean_fname, clean_fhash, tech_json
         ))
     return scan_id
 
 
-def get_user_scans(user_id: int, limit: int = 50) -> List[Dict[str, Any]]:
+def get_user_scans(user_id: int, limit: int = 50, modality: Optional[str] = None) -> List[Dict[str, Any]]:
     """
-    Retrieves all past scans strictly belonging to user_id.
+    Retrieves past scans strictly belonging to user_id, optionally filtered by modality.
     Guarantees cross-tenant data isolation.
     """
     if not user_id:
@@ -565,15 +614,26 @@ def get_user_scans(user_id: int, limit: int = 50) -> List[Dict[str, Any]]:
     p = placeholder()
     with DBConnection() as conn:
         cursor = conn.cursor()
-        cursor.execute(f"""
-            SELECT scan_id, submitted_message, risk_score, risk_level,
-                   threat_classification, detection_reasons, suspicious_indicators,
-                   recommended_action, created_at
-            FROM scans
-            WHERE user_id = {p}
-            ORDER BY created_at DESC
-            LIMIT {p}
-        """, (user_id, limit))
+        if modality and modality.lower() not in ('all', ''):
+            cursor.execute(f"""
+                SELECT scan_id, submitted_message, risk_score, risk_level,
+                       threat_classification, detection_reasons, suspicious_indicators,
+                       recommended_action, modality, file_name, file_hash, technical_details, created_at
+                FROM scans
+                WHERE user_id = {p} AND LOWER(modality) = LOWER({p})
+                ORDER BY created_at DESC
+                LIMIT {p}
+            """, (user_id, modality.lower(), limit))
+        else:
+            cursor.execute(f"""
+                SELECT scan_id, submitted_message, risk_score, risk_level,
+                       threat_classification, detection_reasons, suspicious_indicators,
+                       recommended_action, modality, file_name, file_hash, technical_details, created_at
+                FROM scans
+                WHERE user_id = {p}
+                ORDER BY created_at DESC
+                LIMIT {p}
+            """, (user_id, limit))
         rows = cursor.fetchall()
 
     results = []
@@ -596,6 +656,14 @@ def get_user_scans(user_id: int, limit: int = 50) -> List[Dict[str, Any]]:
         elif not isinstance(d.get('suspicious_indicators'), list):
             d['suspicious_indicators'] = []
 
+        if isinstance(d.get('technical_details'), str):
+            try:
+                d['technical_details'] = json.loads(d['technical_details'])
+            except Exception:
+                d['technical_details'] = {}
+        elif not isinstance(d.get('technical_details'), dict):
+            d['technical_details'] = {}
+
         # Message preview
         raw_msg = d.get('submitted_message', '')
         d['message_preview'] = raw_msg[:90] + ('...' if len(raw_msg) > 90 else '')
@@ -604,6 +672,7 @@ def get_user_scans(user_id: int, limit: int = 50) -> List[Dict[str, Any]]:
         d['scanned_at'] = d['date']
         d['classification'] = d.get('threat_classification', 'Unknown')
         d['confidence'] = d.get('risk_score', 0)
+        d['modality'] = d.get('modality') or 'text'
         results.append(d)
 
     return results
@@ -627,7 +696,7 @@ def get_scan_by_id(scan_id: str, user_id: int) -> Optional[Dict[str, Any]]:
         cursor.execute(f"""
             SELECT scan_id, user_id, submitted_message, risk_score, risk_level,
                    threat_classification, detection_reasons, suspicious_indicators,
-                   recommended_action, created_at
+                   recommended_action, modality, file_name, file_hash, technical_details, created_at
             FROM scans
             WHERE scan_id = {p} AND user_id = {p}
         """, (scan_id, user_id))
@@ -652,12 +721,98 @@ def get_scan_by_id(scan_id: str, user_id: int) -> Optional[Dict[str, Any]]:
         elif not isinstance(d.get('suspicious_indicators'), list):
             d['suspicious_indicators'] = []
 
+        if isinstance(d.get('technical_details'), str):
+            try:
+                d['technical_details'] = json.loads(d['technical_details'])
+            except Exception:
+                d['technical_details'] = {}
+        elif not isinstance(d.get('technical_details'), dict):
+            d['technical_details'] = {}
+
         d['created_at'] = str(d.get('created_at', ''))
         d['date'] = d['created_at'][:19]
         d['scanned_at'] = d['date']
         d['classification'] = d.get('threat_classification', 'Unknown')
         d['confidence'] = d.get('risk_score', 0)
+        d['modality'] = d.get('modality') or 'text'
         return d
+
+
+def clear_user_scans(user_id: int) -> Dict[str, Any]:
+    """
+    Purges all scan history strictly belonging to user_id without deleting account.
+    """
+    if not user_id:
+        return {"success": False, "message": "Invalid user ID."}
+    p = placeholder()
+    with DBConnection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"DELETE FROM scans WHERE user_id = {p}", (user_id,))
+    return {"success": True, "message": "Scan history cleared successfully."}
+
+
+def export_user_data(user_id: int) -> Optional[Dict[str, Any]]:
+    """
+    Exports full user profile information and complete scan history for GDPR/privacy compliance.
+    """
+    user = get_user_by_id(user_id)
+    if not user:
+        return None
+    scans = get_user_scans(user_id, limit=1000)
+    privacy = get_user_privacy_settings(user_id)
+    return {
+        "export_generated_at": datetime.now(timezone.utc).isoformat(),
+        "platform": "SecureSync – Multi Detection System",
+        "user_profile": {
+            "id": user['id'],
+            "username": user['username'],
+            "email": user['email'],
+            "full_name": user.get('full_name'),
+            "role": user.get('role'),
+            "created_at": user.get('created_at')
+        },
+        "privacy_preferences": privacy,
+        "total_scans_recorded": len(scans),
+        "scan_records": scans
+    }
+
+
+def get_user_privacy_settings(user_id: int) -> Dict[str, Any]:
+    """Retrieves user's privacy and data governance settings."""
+    default_settings = {
+        "auto_quarantine_links": True,
+        "sanitize_metadata": True,
+        "retention_days": 90,
+        "allow_telemetry": False
+    }
+    if not user_id:
+        return default_settings
+    p = placeholder()
+    with DBConnection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT privacy_settings FROM users WHERE id = {p}", (user_id,))
+        row = cursor.fetchone()
+        if row and row['privacy_settings']:
+            try:
+                saved = json.loads(row['privacy_settings'])
+                default_settings.update(saved)
+            except Exception:
+                pass
+    return default_settings
+
+
+def update_user_privacy_settings(user_id: int, settings: Dict[str, Any]) -> Dict[str, Any]:
+    """Updates user's privacy and security preferences."""
+    if not user_id:
+        return {"success": False, "message": "Invalid user ID."}
+    current = get_user_privacy_settings(user_id)
+    current.update(settings)
+    settings_json = json.dumps(current)
+    p = placeholder()
+    with DBConnection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"UPDATE users SET privacy_settings = {p} WHERE id = {p}", (settings_json, user_id))
+    return {"success": True, "message": "Security and privacy preferences updated successfully.", "settings": current}
 
 
 def get_user_stats(user_id: int) -> Dict[str, Any]:
@@ -683,8 +838,8 @@ def get_user_stats(user_id: int) -> Dict[str, Any]:
         cursor.execute(f"""
             SELECT 
                 COUNT(*) as total,
-                SUM(CASE WHEN threat_classification = 'Suspicious/Scam' THEN 1 ELSE 0 END) as scams,
-                SUM(CASE WHEN threat_classification = 'Legitimate' THEN 1 ELSE 0 END) as safe,
+                SUM(CASE WHEN risk_level IN ('CRITICAL', 'HIGH') OR threat_classification LIKE '%Scam%' OR threat_classification LIKE '%Threat%' THEN 1 ELSE 0 END) as scams,
+                SUM(CASE WHEN risk_level = 'LOW' OR threat_classification = 'Legitimate' THEN 1 ELSE 0 END) as safe,
                 AVG(risk_score) as avg_score
             FROM scans
             WHERE user_id = {p}

@@ -1,281 +1,213 @@
-# 🛡️ SecureSync – SMS/WhatsApp Scam Detection System
+# 🛡️ SecureSync – Multi Detection System
 
-**SecureSync** is an educational, beginner-friendly cybersecurity project designed for first-year college students and security enthusiasts. It combines **Natural Language Processing (NLP)**, **Machine Learning (Scikit-Learn)**, and **Heuristic Threat Indicators** to inspect SMS and WhatsApp-style messages and classify them as either **"Legitimate"** or **"Suspicious/Scam"**.
+**SecureSync** is an enterprise-grade, multi-modal cybersecurity detection and forensic intelligence platform. Engineered with a zero-trust architecture, SecureSync analyzes threats across four distinct digital modalities — **Text**, **Image**, **Audio**, and **Video** — to detect phishing, social engineering, synthetic media (deepfakes), voice cloning (vishing), and file steganography.
 
----
-
-## 🎯 Project Goal
-
-With the rapid proliferation of smishing (SMS phishing), WhatsApp impersonation scams, and credential theft, everyday mobile users are heavily targeted by social engineering attacks. 
-
-The goal of **SecureSync** is to:
-1. Provide a clean, modern **Security Operations Center (SOC)**-style dashboard for scanning suspicious messages.
-2. Accurately detect social engineering indicators (urgent money requests, fake lotteries, credential/OTP theft, shortened URLs, and intimidation tactics).
-3. Safely quarantine and defang all hyperlinks so users and security analysts never execute malicious links.
-4. Explain in clear, plain English **why** a message was flagged as suspicious.
-5. Teach cybersecurity and computer science students how end-to-end machine learning pipelines operate in threat detection.
+[![Python](https://img.shields.io/badge/Python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.14-blue.svg)](https://python.org)
+[![Framework](https://img.shields.io/badge/Framework-Flask%203.1-black.svg)](https://flask.palletsprojects.com/)
+[![Database](https://img.shields.io/badge/Database-PostgreSQL%20(Neon)%20%7C%20SQLite3-00BFFF.svg)](https://neon.tech)
+[![Tests](https://img.shields.io/badge/Test%20Suite-38%2F38%20Passing%20(100%25)-green.svg)](test_pipeline.py)
+[![License](https://img.shields.io/badge/License-Proprietary%20%2F%20Educational-purple.svg)]()
 
 ---
 
-## 🔄 Core Workflow
+## 🌐 The 4 Multi-Modal Detection Engines
+
+SecureSync unifies four specialized forensic engines into a single Security Operations Center (SOC) interface:
 
 ```
-[ Data Collection ]
-       │
-       ▼
-[ Data Preprocessing ]  --> Lowercasing, noise cleaning, URL/currency tokenization
-       │
-       ▼
-[ NLP Feature Extraction ]  --> TF-IDF Vectorizer (Unigrams & Bigrams)
-       │
-       ▼
-[ Model Training ]  --> Logistic Regression (Calibrated Sigmoidal Probabilities)
-       │
-       ▼
-[ Model Testing ]  --> Evaluated on unseen 20% test split (Accuracy, Precision, Recall, F1)
-       │
-       ▼
-[ Scam Detection ]  --> Hybrid Engine (ML Probability + 7 Heuristic Scam Indicators)
-       │
-       ▼
-[ User Alert ]  --> Real-time Dashboard with Warning Banners, Confidence Meter & Link Quarantine
-```
-
----
-
-## 🧠 Machine Learning & NLP Concepts Explained Simply
-
-### 1. What is TF-IDF?
-Computers cannot understand raw English words directly; they only understand numbers.
-- **Term Frequency (TF)**: Measures how frequently a word appears in a message. For example, if the word `"urgent"` appears multiple times, its TF score increases.
-- **Inverse Document Frequency (IDF)**: Measures how rare or informative a word is across the *entire* dataset. Common words like `"the"`, `"is"`, or `"at"` appear everywhere and receive very low IDF weights. Rare words strongly linked to fraud (such as `"warrant"`, `"deactivated"`, or `"winner"`) receive high IDF weights.
-- **N-Grams (1, 2)**: SecureSync looks at single words (unigrams, e.g., `"transfer"`) as well as word pairs (bigrams, e.g., `"urgent transfer"`, `"arrest warrant"`) to capture contextual intent.
-
-### 2. Why Logistic Regression?
-Logistic Regression is an industry standard for binary classification (0 = Legitimate, 1 = Scam). It computes a weighted sum of the input TF-IDF features and applies the **Sigmoid function** to output a calibrated probability between 0% and 100%:
-
-$$\sigma(z) = \frac{1}{1 + e^{-z}}$$
-
-This makes it easy to explain to users: "The model is 94.2% confident that this pattern represents a scam."
-
-### 3. Understanding Evaluation Metrics in Cybersecurity
-When evaluating a security model, accuracy alone is not enough:
-- **Accuracy (95.65%)**: The percentage of all test messages classified correctly.
-- **Precision (91.67%)**: When SecureSync flags an alert, how often is it truly a scam? High precision avoids "alert fatigue" (we don't want real family chats or real bank alerts blocked as scams).
-- **Recall (100.0%)**: Out of all actual scams, how many did the system catch? In cybersecurity, **Recall is the most critical metric** because a False Negative means a phishing attack slips through to the user's phone!
-- **F1-Score (95.65%)**: The harmonic mean balancing Precision and Recall.
-
----
-
-## 🚨 The 10 Scam Indicators Detected
-
-In addition to statistical machine learning, SecureSync includes a heuristic rule engine that flags 10 common social engineering vectors:
-
-| Indicator | Common Attack Signatures | Explanation for Students |
-|---|---|---|
-| **1. Urgent Money Requests** | `"urgently need"`, `"wire money"`, `"zelle"`, `"cashapp"`, `"fell in water"` | Attackers impersonate family members in fake emergencies or claim payments are due immediately. |
-| **2. Fake Prizes & Rewards** | `"congratulations"`, `"winner"`, `"jackpot"`, `"$50,000 voucher"`, `"claim prize"` | Lures victims into paying fake "processing fees" or providing banking credentials. |
-| **3. OTP / Password Harvesting** | `"enter OTP"`, `"verification code"`, `"share this code"`, `"password"`, `"ssn"` | Direct credential theft. Legitimate banks state that they will **never** ask for your OTP. |
-| **4. Phishing Links** | Brand spoofing (`chase-verify-portal.net`), high-risk TLDs (`.xyz`, `.top`), raw IP links | Directs victims to fake clone websites designed to harvest logins and credit card details. |
-| **5. Fake Banking / Account Alerts** | `"account suspended"`, `"debit card deactivated"`, `"unauthorized access"` | Uses manufactured panic to force immediate action before the user can verify. |
-| **6. Suspicious Shortened URLs** | `bit.ly`, `tinyurl.com`, `t.co`, `is.gd`, `cutt.ly` | Attackers hide the true malicious destination hostname behind URL shorteners. |
-| **7. Coercive / Legal Pressure** | `"arrest warrant"`, `"sheriff"`, `"lawsuit"`, `"asset seizure"`, `"final notice"` | Intimidation tactics designed to frighten victims into immediate financial compliance. |
-| **8. Delivery & Postal Impersonation** | `"package could not be delivered"`, `"redelivery fee"`, `"incomplete address"`, `"customs clearance"` | Impersonates couriers (USPS, FedEx, DHL, UPS) to harvest credit card details for tiny "redelivery fees". |
-| **9. Job Offer & Crypto Investment Fraud** | `"earn $500 daily"`, `"rating assistant"`, `"guaranteed profit"`, `"crypto VIP"`, `"sugar daddy"` | Uses advance-fee fraud and pyramid schemes targeting students seeking part-time income. |
-| **10. Utility & Service Disconnection** | `"power supply disconnected"`, `"SIM card deactivated"`, `"KYC non-compliance"`, `"storage full"` | Threatens cutoff of basic utilities to induce irrational urgency and immediate compliance. |
-
----
-
-## 🔒 Safe Link Handling Policy
-
-> [!IMPORTANT]
-> **Zero-Execution Sandbox:** SecureSync extracts web addresses for domain analysis but **never** sends automated web requests to, resolves, or executes links found in messages.
-> 
-> Furthermore, all URLs displayed on the user interface are **defanged**:
-> - `http://` is rewritten as `hxxp://`
-> - `https://` is rewritten as `hxxps://`
-> - Domain dots are escaped (e.g. `bit[.]ly`)
-> - Hyperlinks are disabled to prevent accidental clicks.
-
----
-
-## 📁 Project Structure
-
-```
-SecureSync/
-├── app.py                     # Flask web server, auth sessions & REST API endpoints
-├── database.py                # Multi-tenant PostgreSQL / SQLite manager & PBKDF2 hashing
-├── database.db                # SQLite database with user isolation & scan audit logs
-├── train_model.py             # Multi-model benchmarking (5 ML algorithms) with zero test leakage
-├── predict.py                 # Core inference, 10 heuristic indicator matching & link defanging
-├── test_pipeline.py           # Comprehensive 21-test automated suite (100% pass)
-├── dataset/
-│   └── messages.csv           # Curated balanced dataset of 110+ SMS & WhatsApp messages
-├── model/
-│   ├── scam_model.pkl         # Serialized Scikit-Learn pipeline (TF-IDF + Logistic Regression)
-│   └── metrics.json           # Benchmark metrics comparing all 5 algorithms & confusion matrix
-├── templates/
-│   ├── home.html              # Modern cybersecurity SaaS landing page
-│   ├── dashboard.html         # SOC threat console, bulk inspector & architecture education
-│   ├── login.html             # User authentication gateway (Username / Email)
-│   ├── register.html          # Registration with salted PBKDF2:SHA-256 hashing
-│   ├── account.html           # User profile & credentials management
-│   ├── forgot_password.html   # Password recovery request
-│   └── reset_password.html    # Secure token-based password reset
-├── static/
-│   ├── style.css              # Dark-mode cybersecurity CSS with glassmorphism & neon accents
-│   └── script.js              # Real-time scan interactions, bulk chat parser & history modal
-├── requirements.txt           # Project dependencies
-├── run.sh                     # One-click startup script
-├── Dockerfile                 # Containerized deployment specification
-├── render.yaml                # Render cloud deployment config
-└── README.md                  # Complete documentation and student guide
+                                  ┌───────────────────────────┐
+                                  │ SecureSync Gateway & Auth │
+                                  └─────────────┬─────────────┘
+                                                │
+         ┌──────────────────┬───────────────────┼───────────────────┬──────────────────┐
+         │                  │                   │                   │                  │
+         ▼                  ▼                   ▼                   ▼                  ▼
+┌─────────────────┐┌─────────────────┐┌─────────────────┐┌─────────────────┐┌─────────────────┐
+│  Text Modality  ││ Image Modality  ││ Audio Modality  ││ Video Modality  ││ Bulk Inspector  │
+├─────────────────┤├─────────────────┤├─────────────────┤├─────────────────┤├─────────────────┤
+│ • NLP TF-IDF    ││ • Shannon       ││ • FFT Spectral  ││ • ISO BMFF MP4  ││ • WhatsApp .txt │
+│ • Calibrated LR ││   Byte Entropy  ││   Roll-off (Hz) ││   Container     ││ • CSV Batch Log │
+│ • 10 Heuristic  ││ • Steganography ││ • Zero-Crossing ││ • Deepfake Tag  ││ • Multi-Message │
+│   Rule Engines  ││   Trailing Data ││   Rate (ZCR)    ││   Fingerprints  ││   Sanitization  │
+│ • Link Defanging││ • EXIF Software ││ • Neural Vocoder││ • Atom Order    ││ • Zero-Leakage  │
+│ • Zero-Trust URL││ • Quishing URLs ││   Cutoff (<9kHz)││   ('moov' post) ││   Batch Parser  │
+└────────┬────────┘└────────┬────────┘└────────┬────────┘└────────┬────────┘└────────┬────────┘
+         │                  │                   │                   │                  │
+         └──────────────────┴───────────────────┼───────────────────┴──────────────────┘
+                                                │
+                                                ▼
+                                ┌───────────────────────────────┐
+                                │ Incident Assessment & Scoring │
+                                └───────────────┬───────────────┘
+                                                │
+                     ┌──────────────────────────┴──────────────────────────┐
+                     ▼                                                     ▼
+      ┌─────────────────────────────┐                       ┌─────────────────────────────┐
+      │ Interactive SOC Dashboard   │                       │ Executive PDF Threat Dossier│
+      │ • Live Forensic Badges      │                       │ • Digital Verification Seal │
+      │ • Quarantine Preview        │                       │ • Forensic Breakdown Grid   │
+      │ • Indicators & Recommendations│                     │ • Incident Playbook         │
+      └─────────────────────────────┘                       └─────────────────────────────┘
 ```
 
 ---
 
-## 🚀 Installation & Setup Guide
+### 1. 📝 Text Threat Engine (Smishing & Phishing)
+- **Natural Language Processing (NLP):** Tokenizes incoming strings, strips zero-width non-printing characters, and extracts unigrams and bigrams via `TfidfVectorizer`.
+- **Calibrated Logistic Regression:** Evaluates mathematical feature weights through a calibrated sigmoidal transfer function to output deterministic probabilities (0–100%).
+- **10 Heuristic Scam Indicator Engines:**
+  1. *Urgent Money Transfers* (Zelle, CashApp, wire fraud, family emergency lures)
+  2. *Fake Prizes & Lottery Winnings* (unsolicited sweepstakes, advance-fee lures)
+  3. *Credential & 2FA Harvesting* (OTP theft, password reset impersonation)
+  4. *Phishing Domain Recognition* (brand spoofing, high-risk TLDs like `.xyz`, `.top`, raw IP endpoints)
+  5. *Deceptive Banking Lockout Alerts* (manufactured panic regarding suspended accounts)
+  6. *Shortened URL Cloaking* (`bit.ly`, `tinyurl.com`, `is.gd`, `t.co`)
+  7. *Legal & Coercive Intimidation* (fake arrest warrants, sheriff summons, IRS litigation)
+  8. *Delivery & Courier Impersonation* (USPS, FedEx, DHL parcel redelivery lures)
+  9. *Job Offer & Pyramid Investment Schemes* (cryptocurrency VIP returns, task rating traps)
+  10. *Critical Utility Disconnection Threats* (electricity, water, cellular SIM deactivation)
+- **Bulk Batch Inspector:** Ingests CSV transcripts or WhatsApp chat export files (`.txt`), automatically cleans embedded NUL (`0x00`) bytes, and processes individual lines with zero data loss.
 
-### 1. Prerequisites
-- Python 3.9+ (Python 3.10, 3.11, 3.12, 3.13, 3.14 supported)
-- Terminal / Command Line access
+---
 
-### 2. Create and Activate a Virtual Environment
-Navigate to the `SecureSync` project directory in your terminal:
+### 2. 🖼️ Image Forensic Engine (Quishing & Steganography)
+- **Shannon Byte Entropy Analysis:** Calculates information density across byte distributions to distinguish standard compressed graphics ($H \approx 6.0\text{--}7.4$) from encrypted/concealed payloads ($H > 7.8$).
+- **Steganography & Trailing Payload Discovery:** Inspects image files past standard End-Of-File delimiters (e.g. JPEG `FF D9`, PNG `IEND`) to detect polyglot binaries, hidden zip archives, and malicious executables.
+- **EXIF Metadata & Software Fingerprinting:** Analyzes header tags (`Software`, `Artist`, `ImageDescription`) for evidence of manipulation suites (`Photoshop`, `GIMP`, `Canva`, `DeepFaceLab`).
+- **Quishing (QR Phishing) & Lure Detection:** Scans embedded byte streams for deceptive links and phishing vectors cloaked inside graphics.
+
+---
+
+### 3. 🎙️ Audio Forensic Engine (Synthetic Voice & Vishing)
+- **Neural Vocoder Spectral Roll-off:** AI voice cloners (e.g., Tortoise, Bark, ElevenLabs, VALL-E) frequently display unnatural high-frequency attenuation cutoffs below 9.0 kHz. SecureSync calculates the 85% energy roll-off threshold via Fast Fourier Transform (FFT).
+- **Zero-Crossing Rate (ZCR) & Energy Dynamics:** Measures synthetic waveform smoothing and lack of natural organic room reverberation.
+- **Ultrasonic Carrier Beaconing:** Scans inaudible frequency bands (>18.5 kHz) for acoustic steganography or surveillance beacon signals.
+- **Voice Social Engineering Keywords:** Scans extracted container stream strings for high-urgency vishing scripts ("social security", "wire money", "arrest warrant").
+
+---
+
+### 4. 🎥 Video Forensic Engine (Deepfakes & Container Forensics)
+- **ISO Base Media File Format (ISO BMFF) Inspection:** Traverses top-level media atoms (`ftyp`, `moov`, `mdat`) in MP4 and QuickTime containers.
+- **Synthetic Pipeline Signatures:** Scans container metadata and encoder libraries for signatures of AI deepfake generation software (`SadTalker`, `Wav2Lip`, `Roop`, `DeepFaceLab`, `FaceFusion`).
+- **Post-Export Atom Hierarchy:** Flags unoptimized rendering layouts (e.g., `moov` header atom trailing at the end of the file rather than the beginning), characteristic of freshly generated neural avatars prior to web transmuxing.
+- **Embedded Phishing Vectors:** Unpacks embedded subtitles and data tracks to intercept malicious links placed inside video reels.
+
+---
+
+## 📄 Executive PDF Threat Intelligence Reports
+
+Every scan across any modality can be instantly exported into an **Executive Threat Intelligence Report** powered by `ReportLab Platypus`:
+
+- **Official Digital Verification Seal:** Includes a cryptographically verifiable SHA-256 fingerprint and unique Scan Reference ID.
+- **Structured Threat Breakdown:** Visual score gauges, risk rating badges (CRITICAL, HIGH, MEDIUM, LOW), and executive assessment summaries.
+- **Forensic Indicators Table:** Vector breakdown, severity tags, and technical rationales.
+- **Incident Response Playbook:** Dynamic containment actions based on detected vectors (e.g., credential rotation, host isolation, out-of-band banking verification).
+- **Zero Data Leakage:** Generated entirely in-memory using `io.BytesIO` streams — no temporary files are ever stored on disk.
+
+---
+
+## 🔒 Security, Privacy & Data Governance
+
+SecureSync is built around strict data privacy and enterprise compliance:
+
+- **GDPR / CCPA Data Portability:** Users can download a complete JSON archive of their profile and scan history at any time (`GET /account/export-data`).
+- **Zero-Trace Scan History Wiping:** One-click scan history purge (`POST /account/clear-history`) completely removes telemetry logs while preserving the user account.
+- **Configurable Data Retention:** Automated audit trail lifespan settings (30, 60, 90, 180, or 365 days).
+- **Zero-Trust URL Quarantine & Defanging:** URLs are rewritten (`hxxp://`, `hxxps://`, `[.]`) and sanitized so analysts never execute live malicious endpoints.
+- **Multi-Tenant Isolation:** PostgreSQL and SQLite database queries strictly filter by authenticated `session['user_id']`. User B can never read or query User A's scans or download their PDF dossiers.
+- **Cryptographic Password Security:** Salting and key derivation via PBKDF2:SHA-256 (600,000 rounds).
+- **Session Security:** `HttpOnly`, `SameSite=Lax`, and conditional `Secure` cookies for HTTPS environments.
+
+---
+
+## 🏗️ Architecture & Database Layer
+
+- **Primary Cloud Database:** **Neon PostgreSQL** via `DATABASE_URL` (automatic `sslmode=require` configuration and connection pooling).
+- **Local Fallback:** **SQLite3** (`database.db`) for rapid local development with zero external configuration.
+- **Idempotent Database Migrations:** `init_db()` dynamically verifies and migrates schema columns (`modality`, `file_name`, `file_hash`, `technical_details`, `privacy_settings`) on boot without data loss.
+
+---
+
+## 🔌 REST API Reference
+
+| Endpoint | Method | Authentication | Description |
+|---|---|---|---|
+| `/api/scan` | `POST` | Optional | Analyze text message for smishing/phishing indicators |
+| `/api/scan/image` | `POST` | Optional | Upload and forensic-scan image file (PNG, JPG, WEBP) |
+| `/api/scan/audio` | `POST` | Optional | Upload and analyze audio file (WAV, MP3, OGG) |
+| `/api/scan/video` | `POST` | Optional | Upload and analyze video file (MP4, MOV, MKV) |
+| `/api/scan-file` | `POST` | Required | Bulk scan CSV or WhatsApp `.txt` export |
+| `/api/scan/<scan_id>/pdf` | `GET` | Required | Download official Threat Intelligence PDF report |
+| `/api/history` | `GET` | Required | Retrieve user scan history (supports `?modality=image`) |
+| `/api/stats` | `GET` | Required | Fetch isolated metrics for the authenticated user |
+| `/account/update-settings` | `POST` | Required | Update retention, auto-quarantine, and privacy rules |
+| `/account/clear-history` | `POST` | Required | Permanently purge all scan logs for the current account |
+| `/account/export-data` | `GET` | Required | Export complete GDPR JSON audit archive |
+
+---
+
+## 🧪 Comprehensive Verification Suite
+
+SecureSync includes 38 rigorous automated unit and integration tests covering the entire pipeline:
 
 ```bash
-cd /Users/akarshnsharma/.gemini/antigravity/scratch/SecureSync
+# Run the automated test suite
+python3 -m unittest test_pipeline.py -v
 ```
 
-Create a virtual environment:
+### Test Suite Coverage:
+- **1. Text Preprocessing & Cleaning:** Normalization, zero-width space removal, link extraction.
+- **2. URL Quarantine & Defanging:** Conversion to `hxxp://`, IP de-obfuscation.
+- **3. Heuristic Rules (10 vectors):** Urgency, lottery, 2FA theft, legal threats, shorteners, package alerts, etc.
+- **4. Machine Learning Inference:** TF-IDF feature extraction, probability thresholding.
+- **5. Multi-Modal Detectors:** Image entropy, stego trailing data, audio FFT roll-off, video ISO BMFF atoms and deepfake markers.
+- **6. Executive PDF Generation:** Structure, tables, metadata seals, styling.
+- **7. Multi-Tenant Isolation:** Guarantees cross-tenant boundary security between distinct user accounts.
+- **8. Authentication & Password Security:** Registration, PBKDF2 hashing, single-use password recovery tokens.
+- **9. Data Governance & Privacy:** GDPR JSON export, scan history purge, retention preference persistence.
+- **10. Batch Ingestion:** NUL (`0x00`) byte handling in CSV and WhatsApp exports.
+
+---
+
+## 🚀 Quickstart & Installation
+
+### 1. Clone & Setup
 ```bash
+git clone https://github.com/PSYCHQ25/SecureSync.git
+cd SecureSync
 python3 -m venv venv
-```
-
-Activate the virtual environment:
-- **macOS / Linux:**
-  ```bash
-  source venv/bin/activate
-  ```
-- **Windows:**
-  ```cmd
-  venv\Scripts\activate
-  ```
-
-### 3. Install Dependencies
-```bash
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. Train the Model
-Train the machine learning pipeline on the balanced dataset:
+### 2. Run the Verification Suite
 ```bash
-python train_model.py
+python3 -m unittest test_pipeline.py
 ```
-*You will see the step-by-step training output, candidate comparison, precision/recall metrics, and confirmation that `model/scam_model.pkl` was generated.*
 
-### 5. Launch the Web Application
-Start the Flask cybersecurity dashboard:
+### 3. Launch the Server
 ```bash
-python app.py
+python3 app.py
 ```
-
-Open your web browser and navigate to:
-```
-http://127.0.0.1:5001
-```
+Open [http://127.0.0.1:5001](http://127.0.0.1:5001) in your browser.
 
 ---
 
-## 🧪 Testing with Sample Messages
+## ☁️ Deployment
 
-You can use the built-in preset buttons in the dashboard, or test messages from your terminal using `predict.py`.
-
-### 🚨 Scam Test Messages
-
-#### Sample 1: Banking Phishing
-```text
-Dear customer, your Chase bank account has been temporarily restricted due to suspicious login attempts. Verify your identity immediately at http://bit.ly/chase-verify-now to avoid permanent closure.
-```
-- **Expected Classification:** `Suspicious/Scam`
-- **Detected Indicators:** Shortened URL, Deceptive Banking Alert, High Threat Score.
-
-#### Sample 2: WhatsApp Family Impersonation ("Hi Mom")
-```text
-Hi Mom, my phone fell in the water and this is my temporary WhatsApp number. My bank app is not working and I urgently need $450 to pay for car towing. Can you send it via Zelle right now?
-```
-- **Expected Classification:** `Suspicious/Scam`
-- **Detected Indicators:** Urgent Money Request, Social Engineering Impersonation.
-
-#### Sample 3: Prize Scam
-```text
-CONGRATULATIONS! You have been selected as the official winner of a $50,000 Walmart cash gift card. Claim your exclusive prize code at http://win-walmart-voucher.com before midnight!
-```
-- **Expected Classification:** `Suspicious/Scam`
-- **Detected Indicators:** Fake Prize or Reward, Unsolicited Lottery.
-
-#### Sample 4: Arrest & Law Enforcement Threat
-```text
-INTERNAL REVENUE SERVICE: A formal lawsuit has been registered under your Social Security Number. Call our legal division immediately at 1-888-555-0199 or local sheriff will execute arrest warrant.
-```
-- **Expected Classification:** `Suspicious/Scam`
-- **Detected Indicators:** Coercive / Threatening Language, False Authority.
+### Render Deployment
+This repository is configured for zero-downtime deployment on Render via `render.yaml`:
+- **Build Command:** `pip install -r requirements.txt`
+- **Start Command:** `gunicorn -c gunicorn.conf.py app:app`
+- **Environment Variables:**
+  - `SECRET_KEY`: Random 64-character secret
+  - `DATABASE_URL`: Neon PostgreSQL connection string
+  - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`: (Optional) for email resets
 
 ---
 
-### ✔️ Legitimate Test Messages
-
-#### Sample 5: Genuine Bank 2FA Code
-```text
-Your Chase verification code is 492019. Valid for 10 minutes. Chase will never call or text you asking for this code. Do not share it with anyone.
-```
-- **Expected Classification:** `Legitimate`
-- **Reasons:** Contains standard security advice instructing recipient never to share codes; no fraudulent URLs.
-
-#### Sample 6: Casual Everyday Chat
-```text
-Hey, are we still meeting for lunch at 12:30 today? I'm heading towards the campus dining hall now.
-```
-- **Expected Classification:** `Legitimate`
-- **Reasons:** Natural conversational cadence; zero scam indicators detected.
-
-#### Sample 7: Official Debit Card Purchase Notice
-```text
-Bank of America: A purchase of $18.42 was made at Starbucks with your debit card ending in 4102. If authorized, no action is needed.
-```
-- **Expected Classification:** `Legitimate`
-- **Reasons:** Standard notification phrasing; states "no action is needed", unlike phishing alerts which demand urgent clicks.
-
----
-
-## 💻 Testing via Terminal CLI
-
-You can also run instant command-line scans without opening a browser:
-
-```bash
-python predict.py "URGENT: Your Wells Fargo debit card is deactivated. Update credentials at http://bit.ly/wf-login immediately."
-```
-
-```bash
-python predict.py "Hey, don't forget our presentation for cybersecurity class is due this Thursday."
-```
-
----
-
-## ⚠️ System Limitations & Ethical Considerations
-
-1. **Probabilistic Nature of Machine Learning:**
-   Machine learning models compute statistical likelihoods based on trained patterns. A classification of `"Legitimate"` **does not guarantee 100% safety**. Novel scam formats that look entirely conversational may occasionally bypass the filter.
-2. **Adversarial Evasion:**
-   Real-world cybercriminals continuously evolve their tactics. They may use intentional typos, leetspeak (`"w1nner"`, `"cl!ck"`), zero-width unicode spaces, or image-based messages (QR codes) to evade text-based NLP filters.
-3. **Defense-in-Depth Principle:**
-   Automated scam filters should always be viewed as one layer of a broader defense-in-depth strategy. Users must always combine automated tools with **out-of-band verification** (e.g. calling their bank using the official phone number on the back of their physical card).
-4. **Privacy & Data Ethics:**
-   The training dataset contains exclusively synthetic and generalized educational templates. It contains **no private messages or real personal information** from real individuals.
-
----
-
-## 👨‍💻 Author & Acknowledgements
-- **Project:** SecureSync – SMS/WhatsApp Scam Detection System
-- **Intended Audience:** First-Year Undergraduate Cybersecurity & Computer Science Students
-- **Technologies:** Python 3, Flask, Scikit-Learn, Pandas, NumPy, HTML5, CSS3, Vanilla JS
+## 👨‍💻 Project Information
+- **Project:** SecureSync – Multi Detection System
+- **Authors:** SecureSync Cyber Defense Team
+- **Repository:** [https://github.com/PSYCHQ25/SecureSync.git](https://github.com/PSYCHQ25/SecureSync.git)
+- **License:** MIT / Academic Cybersecurity Research

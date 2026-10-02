@@ -3,20 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SecureSync – Account Settings</title>
+    <title>SecureSync – Multi Detection System | Account & Privacy Settings</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        .account-container { max-width: 800px; margin: 40px auto; padding: 0 24px; }
-        .account-section { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 30px; margin-bottom: 24px; }
-        .account-section h2 { margin-bottom: 20px; font-size: 1.4rem; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 12px; }
-        .profile-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .profile-label { color: var(--text-secondary); font-weight: 500; }
-        .profile-value { color: var(--text-primary); font-family: var(--font-mono); }
-        .danger-zone { border-color: var(--red-threat); background: rgba(255, 51, 102, 0.03); }
+        .account-container { max-width: 860px; margin: 40px auto 60px; padding: 0 24px; }
+        .account-header { margin-bottom: 28px; }
+        .account-header h1 { font-size: 2rem; color: #ffffff; margin-bottom: 8px; }
+        .account-header p { color: var(--text-secondary); font-size: 0.95rem; }
+        .account-section { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 28px 32px; margin-bottom: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.25); }
+        .account-section h2 { margin-bottom: 18px; font-size: 1.3rem; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+        .profile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 12px; }
+        .profile-stat-box { background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 14px 18px; }
+        .profile-label { display: block; color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .profile-value { color: var(--text-primary); font-family: var(--font-mono); font-size: 1.05rem; font-weight: 600; }
+        
+        .toggle-switch-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.06); gap: 20px; }
+        .toggle-switch-row:last-child { border-bottom: none; }
+        .toggle-info h4 { font-size: 0.95rem; color: #ffffff; margin-bottom: 4px; }
+        .toggle-info p { font-size: 0.82rem; color: var(--text-secondary); margin: 0; line-height: 1.4; }
+        
+        .switch { position: relative; display: inline-block; width: 46px; height: 24px; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #1e293b; transition: .3s; border-radius: 24px; border: 1px solid rgba(255,255,255,0.1); }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: #94a3b8; transition: .3s; border-radius: 50%; }
+        input:checked + .slider { background-color: rgba(0, 240, 255, 0.2); border-color: var(--cyan); }
+        input:checked + .slider:before { transform: translateX(22px); background-color: var(--cyan); }
+
+        .danger-zone { border-color: rgba(255, 51, 102, 0.4); background: rgba(255, 51, 102, 0.03); }
         .danger-zone h2 { color: var(--red-threat); border-color: rgba(255, 51, 102, 0.2); }
+        .danger-actions { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 16px; }
     </style>
 </head>
 <body>
@@ -25,24 +43,40 @@
     <header class="navbar">
         <div class="nav-container">
             <div class="brand">
-                <div class="brand-icon">
-                    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                        <path d="M9 12l2 2 4-4"/>
-                    </svg>
-                </div>
-                <div class="brand-text">
-                    <span class="brand-title">SecureSync</span>
-                </div>
+                <a href="{{ url_for('dashboard') }}" style="display:flex; align-items:center; gap:12px; text-decoration:none;">
+                    <div class="brand-icon">
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <path d="M9 12l2 2 4-4"/>
+                        </svg>
+                    </div>
+                    <div class="brand-text">
+                        <span class="brand-title">SecureSync</span>
+                        <span class="brand-tag">Multi Detection System</span>
+                    </div>
+                </a>
             </div>
             <div class="nav-right">
-                <a href="{{ url_for('dashboard') }}" class="btn-nav-action" style="background: transparent;">Dashboard</a>
+                <a href="{{ url_for('dashboard') }}" class="btn-table-action" style="padding: 6px 14px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"/>
+                        <rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                    Dashboard
+                </a>
                 <a href="{{ url_for('logout') }}" class="btn-nav-logout">Logout</a>
             </div>
         </div>
     </header>
 
     <div class="account-container">
+        <div class="account-header">
+            <h1>Account & Privacy Command Center</h1>
+            <p>Configure threat analyst credentials, multi-modal privacy policies, zero-trust sanitization, and data portability.</p>
+        </div>
+
         <!-- Flash Alerts -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -54,51 +88,165 @@
             {% endif %}
         {% endwith %}
 
+        <!-- 1. Profile Overview -->
         <div class="account-section">
-            <h2>Profile Overview</h2>
-            <div class="profile-row">
-                <span class="profile-label">Username</span>
-                <span class="profile-value">{{ current_user.username }}</span>
-            </div>
-            <div class="profile-row">
-                <span class="profile-label">Email Address</span>
-                <span class="profile-value">{{ current_user.email }}</span>
-            </div>
-            <div class="profile-row">
-                <span class="profile-label">Role</span>
-                <span class="profile-value">{{ current_user.role }}</span>
-            </div>
-            <div class="profile-row" style="border-bottom: none;">
-                <span class="profile-label">Member Since</span>
-                <span class="profile-value">{{ current_user.created_at[:10] }}</span>
+            <h2>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                </svg>
+                Analyst Profile Overview
+            </h2>
+            <div class="profile-grid">
+                <div class="profile-stat-box">
+                    <span class="profile-label">Username</span>
+                    <span class="profile-value">{{ current_user.username }}</span>
+                </div>
+                <div class="profile-stat-box">
+                    <span class="profile-label">Email Address</span>
+                    <span class="profile-value" style="font-size:0.9rem;">{{ current_user.email }}</span>
+                </div>
+                <div class="profile-stat-box">
+                    <span class="profile-label">Role Classification</span>
+                    <span class="profile-value" style="color:var(--cyan);">{{ current_user.role or 'Security Analyst' }}</span>
+                </div>
+                <div class="profile-stat-box">
+                    <span class="profile-label">Member Since</span>
+                    <span class="profile-value">{{ current_user.created_at[:10] }}</span>
+                </div>
+                <div class="profile-stat-box">
+                    <span class="profile-label">Total Messages & Media Scanned</span>
+                    <span class="profile-value">{{ user_stats.total_scanned if user_stats else 0 }}</span>
+                </div>
+                <div class="profile-stat-box">
+                    <span class="profile-label">Threats Quarantined</span>
+                    <span class="profile-value" style="color:var(--red-threat);">{{ user_stats.threats_detected if user_stats else 0 }}</span>
+                </div>
             </div>
         </div>
 
+        <!-- 2. Privacy & Defensive Security Policies -->
         <div class="account-section">
-            <h2>Change Password</h2>
+            <h2>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                Privacy & Zero-Trust Governance
+            </h2>
+            <form action="{{ url_for('update_settings') }}" method="POST">
+                <div class="toggle-switch-row">
+                    <div class="toggle-info">
+                        <h4>Zero-Trust URL Defanging & Link Quarantine</h4>
+                        <p>Automatically rewrite all detected hyperlinks into quarantined safe text (e.g. <code>hxxp://example[.]com</code>) to prevent accidental execution.</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" name="auto_quarantine_links" {% if privacy_settings.get('auto_quarantine_links', True) %}checked{% endif %}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="toggle-switch-row">
+                    <div class="toggle-info">
+                        <h4>Forensic Metadata Sanitization</h4>
+                        <p>Strip sensitive geographical GPS coordinates and camera device serials from uploaded images/audio prior to permanent forensic logging.</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" name="sanitize_metadata" {% if privacy_settings.get('sanitize_metadata', True) %}checked{% endif %}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="toggle-switch-row">
+                    <div class="toggle-info">
+                        <h4>Scan Log Retention Policy</h4>
+                        <p>Define automated data lifecycle rules for historical forensic reports.</p>
+                    </div>
+                    <div>
+                        <select name="retention_days" class="cyber-input" style="width: auto; padding: 6px 12px; font-size: 0.85rem;">
+                            <option value="30" {% if privacy_settings.get('retention_days') == 30 %}selected{% endif %}>30 Days</option>
+                            <option value="90" {% if privacy_settings.get('retention_days', 90) == 90 %}selected{% endif %}>90 Days (Recommended)</option>
+                            <option value="365" {% if privacy_settings.get('retention_days') == 365 %}selected{% endif %}>1 Year</option>
+                            <option value="0" {% if privacy_settings.get('retention_days') == 0 %}selected{% endif %}>Indefinite Retention</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <button type="submit" class="btn-primary" style="padding: 10px 22px;">Save Privacy Preferences</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 3. Change Password -->
+        <div class="account-section">
+            <h2>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                </svg>
+                Password Security
+            </h2>
             <form action="{{ url_for('change_password') }}" method="POST">
                 <div class="form-group" style="margin-bottom: 16px;">
                     <label>Current Password</label>
-                    <input type="password" name="current_password" class="cyber-input" required>
+                    <input type="password" name="current_password" class="cyber-input" placeholder="Enter current password" required>
                 </div>
                 <div class="form-group" style="margin-bottom: 16px;">
-                    <label>New Password</label>
-                    <input type="password" name="new_password" class="cyber-input" minlength="6" required>
+                    <label>New Password (min 6 characters)</label>
+                    <input type="password" name="new_password" class="cyber-input" placeholder="Enter robust new password" minlength="6" required>
                 </div>
-                <button type="submit" class="btn-primary">Update Password</button>
+                <button type="submit" class="btn-primary" style="padding: 10px 22px;">Update Password</button>
             </form>
         </div>
 
-        <div class="account-section danger-zone">
-            <h2>Danger Zone</h2>
-            <p style="color: var(--text-secondary); margin-bottom: 16px;">
-                Permanently delete your account and all scan history. This action cannot be undone.
+        <!-- 4. Data Portability & GDPR Export -->
+        <div class="account-section">
+            <h2>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Data Portability & Audit Archive
+            </h2>
+            <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 0.9rem;">
+                Download an export package of your complete scan history, quarantined threats, indicators, and profile settings in JSON format for external SIEM integration or compliance.
             </p>
-            <form action="{{ url_for('delete_account') }}" method="POST" onsubmit="return confirm('Are you absolutely sure you want to permanently delete your account and all scan history? This action is irreversible.');">
-                <button type="submit" class="btn-primary" style="background: var(--red-threat); border-color: var(--red-threat); color: white;">
-                    Delete Account Permanently
-                </button>
-            </form>
+            <a href="{{ url_for('export_data') }}" class="btn-table-action" style="padding: 10px 20px; font-size: 0.9rem; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Export All My Data (JSON)
+            </a>
+        </div>
+
+        <!-- 5. Danger Zone -->
+        <div class="account-section danger-zone">
+            <h2>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                Danger Zone
+            </h2>
+            <p style="color: var(--text-secondary); margin-bottom: 14px; font-size: 0.9rem;">
+                Irreversible actions. You may purge your historical forensic logs independently without destroying your analyst account, or permanently erase your user profile and all associated data.
+            </p>
+            <div class="danger-actions">
+                <form action="{{ url_for('clear_history') }}" method="POST" onsubmit="return confirm('Wipe scan history? All past threat investigations will be permanently erased. Your account will remain active.');">
+                    <button type="submit" class="btn-secondary" style="border-color: rgba(255, 51, 102, 0.4); color: var(--red-threat);">
+                        Clear Scan History Only
+                    </button>
+                </form>
+                <form action="{{ url_for('delete_account') }}" method="POST" onsubmit="return confirm('Are you absolutely sure you want to permanently delete your account and all scan history? This action cannot be reversed.');">
+                    <button type="submit" class="btn-primary" style="background: var(--red-threat); border-color: var(--red-threat); color: white;">
+                        Delete Account Permanently
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 </body>
