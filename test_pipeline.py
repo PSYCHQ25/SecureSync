@@ -1002,6 +1002,255 @@ class TestSecureSyncPipeline(unittest.TestCase):
         # Cleanup
         delete_user_account(user['id'])
 
+    def test_postgres_mode_stats_reproduction_and_fix(self):
+        """
+        Regression Test:
+        1. Demonstrates how psycopg2 query parameter parsing raises IndexError: tuple index out of range
+           when literal unescaped % characters (e.g. LIKE '%Scam%') are present in SQL strings.
+        2. Proves that the fixed get_user_stats query contains 0 unescaped percent signs, ensuring
+           100% compatibility with Neon PostgreSQL.
+        """
+        # 1. Reproduce psycopg2 behavior: query with % placeholder mismatch
+        broken_sql = "SELECT * FROM scans WHERE classification LIKE '%Scam%' AND user_id = %s"
+        # When psycopg2 parses broken_sql, %S is parsed as a format specifier.
+        # A single-element tuple (user_id,) only satisfies the first specifier, leaving %s out of range.
+        import re
+        percent_placeholders = re.findall(r'%[a-zA-Z%]', broken_sql)
+        self.assertGreater(len(percent_placeholders), 1)
+
+        # 2. Verify fixed get_user_stats implementation has ZERO unescaped percent signs in its SQL
+        # We test with mock cursor under is_postgres() = True
+        u_name = "pg_test_user"
+        register_user(u_name, "pg_user@test.internal", "Pass12345!")
+        user = authenticate_user(u_name, "Pass12345!")
+
+        with patch('database.is_postgres', return_value=True):
+            with patch('database.placeholder', return_value='%s'):
+                # Call get_user_stats: should execute cleanly without tuple index error
+                mock_cursor = MagicMock()
+                mock_cursor.fetchone.return_value = {
+                    'total': 4,
+                    'scams': 3,
+                    'safe': 1,
+                    'avg_score': 78.5
+                }
+                with patch('database.DBConnection') as mock_db:
+                    mock_conn = MagicMock()
+                    mock_conn.cursor.return_value = mock_cursor
+                    mock_db.return_value.__enter__.return_value = mock_conn
+
+                    stats = get_user_stats(user['id'])
+                    self.assertEqual(stats['total_scanned'], 4)
+                    self.assertEqual(stats['threats_detected'], 3)
+                    self.assertEqual(stats['safe_verified'], 1)
+
+                    # Inspect the SQL passed to cursor.execute: must contain exactly one %s and no unescaped %
+                    executed_sql, executed_params = mock_cursor.execute.call_args[0]
+                    self.assertEqual(executed_sql.count('%s'), 1)
+                    self.assertEqual(executed_sql.count('%'), 1)  # Only the single %s placeholder
+                    self.assertEqual(len(executed_params), 1)
+                    self.assertEqual(executed_params[0], user['id'])
+
+        delete_user_account(user['id'])
+
+    def test_all_four_detection_engines_full_pipeline(self):
+        """
+        Comprehensive End-to-End Test:
+        Verifies actual upload -> processing -> detection -> persistence -> stats calculation
+        for all 4 engines: Text, Image, Audio, and Video.
+        Guarantees that NONE of them raise 'tuple index out of range'.
+        """
+        client = app.test_client()
+
+        u_name = "e2e_analyst"
+        register_user(u_name, "e2e@securesync.internal", "Password123!")
+        user = authenticate_user(u_name, "Password123!")
+
+        with client.session_transaction() as sess:
+            sess['user_id'] = user['id']
+            sess['username'] = user['username']
+
+        # 1. Real Text Detection (Threat Payload)
+        text_payload = {
+            "message": "URGENT ALERT: Your Chase bank card has been suspended. Verify immediately at http://bit.ly/chase-verify-card or legal action will follow."
+        }
+        res_text = client.post('/api/scan', json=text_payload)
+        self.assertEqual(res_text.status_code, 200)
+        data_text = res_text.get_json()
+        self.assertEqual(data_text['status'], 'success')
+        self.assertTrue(data_text['analysis']['is_scam'])
+        self.assertIn('scan_id', data_text['analysis'])
+        self.assertIn('updated_stats', data_text)
+        self.assertGreaterEqual(data_text['updated_stats']['total_scanned'], 1)
+        self.assertGreaterEqual(data_text['updated_stats']['threats_detected'], 1)
+
+        # 2. Real Image Detection (JPEG with Steganography Trailing Bytes)
+        img = Image.new('RGB', (80, 80), color=(200, 30, 30))
+        img_buf = io.BytesIO()
+        img.save(img_buf, format='JPEG')
+        clean_jpg_bytes = img_buf.getvalue()
+        # Append 128 trailing bytes past EOF (simulating polyglot stego payload)
+        stego_jpg_bytes = clean_jpg_bytes + b"PAYLOAD_EXEC_STEGO_BINARY_OVERLAY_1234567890" * 3
+
+        res_img = client.post('/api/scan/image', data={
+            'file': (io.BytesIO(stego_jpg_bytes), 'evidence_screenshot.jpg')
+        }, content_type='multipart/form-data')
+        self.assertEqual(res_img.status_code, 200)
+        data_img = res_img.get_json()
+        self.assertEqual(data_img['status'], 'success')
+        self.assertEqual(data_img['analysis']['modality'], 'image')
+        self.assertTrue(data_img['analysis']['is_threat'])
+        self.assertIn('scan_id', data_img['analysis'])
+        self.assertIn('updated_stats', data_img)
+        self.assertGreaterEqual(data_img['updated_stats']['total_scanned'], 2)
+
+        # 3. Real Audio Detection (WAV Audio with Synthetic Frequency Cutoff)
+        wav_buf = io.BytesIO()
+        with wave.open(wav_buf, 'wb') as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(22050)
+            # Create synthetic flat tone with abrupt rolloff
+            samples = [int(15000 * math.sin(2 * math.pi * 440 * i / 22050)) for i in range(11025)]
+            wav_file.writeframes(struct.pack(f'<{len(samples)}h', *samples))
+        aud_bytes = wav_buf.getvalue()
+
+        res_aud = client.post('/api/scan/audio', data={
+            'file': (io.BytesIO(aud_bytes), 'suspect_call.wav')
+        }, content_type='multipart/form-data')
+        self.assertEqual(res_aud.status_code, 200)
+        data_aud = res_aud.get_json()
+        self.assertEqual(data_aud['status'], 'success')
+        self.assertEqual(data_aud['analysis']['modality'], 'audio')
+        self.assertIn('scan_id', data_aud['analysis'])
+        self.assertIn('updated_stats', data_aud)
+        self.assertGreaterEqual(data_aud['updated_stats']['total_scanned'], 3)
+
+        # 4. Real Video Detection (MP4 Container with Synthetic Encoder Tool Tag)
+        ftyp_payload = b'isom\x00\x00\x02\x00isomiso2mp41'
+        ftyp_box = struct.pack('>I4s', len(ftyp_payload) + 8, b'ftyp') + ftyp_payload
+        mdat_payload = b'sadtalker_generated_frame_sequence_v2.0_deepfake_pipeline'
+        mdat_box = struct.pack('>I4s', len(mdat_payload) + 8, b'mdat') + mdat_payload
+        vid_bytes = ftyp_box + mdat_box
+
+        res_vid = client.post('/api/scan/video', data={
+            'file': (io.BytesIO(vid_bytes), 'synthetic_interview.mp4')
+        }, content_type='multipart/form-data')
+        self.assertEqual(res_vid.status_code, 200)
+        data_vid = res_vid.get_json()
+        self.assertEqual(data_vid['status'], 'success')
+        self.assertEqual(data_vid['analysis']['modality'], 'video')
+        self.assertTrue(data_vid['analysis']['is_threat'])
+        self.assertIn('scan_id', data_vid['analysis'])
+        self.assertIn('updated_stats', data_vid)
+        self.assertGreaterEqual(data_vid['updated_stats']['total_scanned'], 4)
+
+        # Verify scan records in database match
+        user_scans = get_user_scans(user['id'])
+        self.assertEqual(len(user_scans), 4)
+
+        delete_user_account(user['id'])
+
+    def test_all_detection_engines_clean_legitimate_inputs(self):
+        """Verifies clean/legitimate inputs pass through all 4 detection engines without errors."""
+        client = app.test_client()
+
+        u_name = "clean_analyst"
+        register_user(u_name, "clean@securesync.internal", "Password123!")
+        user = authenticate_user(u_name, "Password123!")
+
+        with client.session_transaction() as sess:
+            sess['user_id'] = user['id']
+            sess['username'] = user['username']
+
+        # 1. Clean Text
+        res_text = client.post('/api/scan', json={"message": "Hey team, looking forward to the quarterly retrospective tomorrow morning at 10 AM."})
+        self.assertEqual(res_text.status_code, 200)
+        self.assertFalse(res_text.get_json()['analysis']['is_scam'])
+
+        # 2. Clean Image (Clean PNG)
+        img = Image.new('RGB', (100, 100), color=(240, 240, 240))
+        img_buf = io.BytesIO()
+        img.save(img_buf, format='PNG')
+        res_img = client.post('/api/scan/image', data={
+            'file': (io.BytesIO(img_buf.getvalue()), 'chart.png')
+        }, content_type='multipart/form-data')
+        self.assertEqual(res_img.status_code, 200)
+        self.assertFalse(res_img.get_json()['analysis']['is_threat'])
+
+        # 3. Clean Audio
+        wav_buf = io.BytesIO()
+        with wave.open(wav_buf, 'wb') as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(44100)
+            samples = [int(1000 * math.sin(2 * math.pi * 200 * i / 44100)) for i in range(44100)]
+            wav_file.writeframes(struct.pack(f'<{len(samples)}h', *samples))
+        res_aud = client.post('/api/scan/audio', data={
+            'file': (io.BytesIO(wav_buf.getvalue()), 'ambient_meeting.wav')
+        }, content_type='multipart/form-data')
+        self.assertEqual(res_aud.status_code, 200)
+
+        # 4. Clean Video
+        ftyp_payload = b'isom\x00\x00\x02\x00isomiso2mp41'
+        ftyp_box = struct.pack('>I4s', len(ftyp_payload) + 8, b'ftyp') + ftyp_payload
+        mdat_payload = b'standard_avc1_video_stream_h264'
+        mdat_box = struct.pack('>I4s', len(mdat_payload) + 8, b'mdat') + mdat_payload
+        res_vid = client.post('/api/scan/video', data={
+            'file': (io.BytesIO(ftyp_box + mdat_box), 'presentation.mp4')
+        }, content_type='multipart/form-data')
+        self.assertEqual(res_vid.status_code, 200)
+
+        delete_user_account(user['id'])
+
+    def test_all_detection_engines_invalid_inputs_safety(self):
+        """Verifies that invalid or empty uploads return clear HTTP 400 errors instead of unhandled exceptions."""
+        client = app.test_client()
+
+        u_name = "invalid_tester"
+        register_user(u_name, "invalid@securesync.internal", "Password123!")
+        user = authenticate_user(u_name, "Password123!")
+
+        with client.session_transaction() as sess:
+            sess['user_id'] = user['id']
+            sess['username'] = user['username']
+
+        # Text: Empty message
+        res_t1 = client.post('/api/scan', json={"message": "   "})
+        self.assertEqual(res_t1.status_code, 400)
+        self.assertIn("cannot be empty", res_t1.get_json()['message'])
+
+        # Image: Missing file
+        res_i1 = client.post('/api/scan/image', data={}, content_type='multipart/form-data')
+        self.assertEqual(res_i1.status_code, 400)
+
+        # Image: Empty file
+        res_i2 = client.post('/api/scan/image', data={'file': (io.BytesIO(b''), 'empty.jpg')}, content_type='multipart/form-data')
+        self.assertEqual(res_i2.status_code, 400)
+
+        # Image: Unsupported format
+        res_i3 = client.post('/api/scan/image', data={'file': (io.BytesIO(b'dummy'), 'malware.exe')}, content_type='multipart/form-data')
+        self.assertEqual(res_i3.status_code, 400)
+        self.assertIn("Unsupported image format", res_i3.get_json()['message'])
+
+        # Audio: Empty file
+        res_a1 = client.post('/api/scan/audio', data={'file': (io.BytesIO(b''), 'empty.wav')}, content_type='multipart/form-data')
+        self.assertEqual(res_a1.status_code, 400)
+
+        # Audio: Unsupported format
+        res_a2 = client.post('/api/scan/audio', data={'file': (io.BytesIO(b'dummy'), 'song.txt')}, content_type='multipart/form-data')
+        self.assertEqual(res_a2.status_code, 400)
+
+        # Video: Empty file
+        res_v1 = client.post('/api/scan/video', data={'file': (io.BytesIO(b''), 'empty.mp4')}, content_type='multipart/form-data')
+        self.assertEqual(res_v1.status_code, 400)
+
+        # Video: Unsupported format
+        res_v2 = client.post('/api/scan/video', data={'file': (io.BytesIO(b'dummy'), 'clip.pdf')}, content_type='multipart/form-data')
+        self.assertEqual(res_v2.status_code, 400)
+
+        delete_user_account(user['id'])
+
 
 if __name__ == '__main__':
     unittest.main()

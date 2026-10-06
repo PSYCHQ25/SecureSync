@@ -395,8 +395,11 @@ class AudioThreatDetector:
 
                 # Spectral Roll-off (frequency below which 85% of energy lies)
                 cum_energy = np.cumsum(fft_vals)
-                rolloff_idx = np.where(cum_energy >= 0.85 * cum_energy[-1])[0]
-                rolloff_freq = float(freqs[rolloff_idx[0]]) if len(rolloff_idx) > 0 else 0.0
+                if len(cum_energy) > 0 and cum_energy[-1] > 0:
+                    rolloff_idx = np.where(cum_energy >= 0.85 * cum_energy[-1])[0]
+                    rolloff_freq = float(freqs[rolloff_idx[0]]) if len(rolloff_idx) > 0 and len(freqs) > rolloff_idx[0] else 0.0
+                else:
+                    rolloff_freq = 0.0
                 forensic_details["spectral_rolloff_hz"] = round(rolloff_freq, 1)
             else:
                 spectral_centroid = 0.0
@@ -558,7 +561,10 @@ class VideoThreatDetector:
             pos = 0
             while pos < min(len(file_bytes) - 8, 200000):
                 try:
-                    atom_size = struct.unpack(">I", file_bytes[pos:pos+4])[0]
+                    if pos + 8 > len(file_bytes):
+                        break
+                    unpacked = struct.unpack(">I", file_bytes[pos:pos+4])
+                    atom_size = unpacked[0] if len(unpacked) > 0 else 0
                     atom_type = file_bytes[pos+4:pos+8].decode('ascii', errors='ignore')
                     if atom_type and re.match(r'^[a-zA-Z0-9]{4}$', atom_type):
                         detected_atoms.append(atom_type)

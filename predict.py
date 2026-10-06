@@ -342,10 +342,16 @@ class ScamDetector:
         indicators = self.detect_indicators(original_text, links)
 
         # 3. Machine Learning Inference
-        # Obtain class probabilities: index 0 is Legitimate, index 1 is Scam
-        probabilities = self.pipeline.predict_proba([cleaned_text])[0]
-        prob_legit = float(probabilities[0])
-        prob_scam = float(probabilities[1])
+        # Obtain class probabilities safely: index 0 is Legitimate, index 1 is Scam
+        raw_probs = self.pipeline.predict_proba([cleaned_text])
+        if len(raw_probs) > 0 and len(raw_probs[0]) >= 2:
+            prob_legit = float(raw_probs[0][0])
+            prob_scam = float(raw_probs[0][1])
+        elif len(raw_probs) > 0 and len(raw_probs[0]) == 1:
+            prob_scam = float(raw_probs[0][0])
+            prob_legit = 1.0 - prob_scam
+        else:
+            prob_legit, prob_scam = 0.5, 0.5
 
         # 4. Hybrid Classification Logic:
         # A message is classified as Suspicious/Scam if:

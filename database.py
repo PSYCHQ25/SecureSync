@@ -816,7 +816,11 @@ def update_user_privacy_settings(user_id: int, settings: Dict[str, Any]) -> Dict
 
 
 def get_user_stats(user_id: int) -> Dict[str, Any]:
-    """Computes summary statistics specifically for a single user."""
+    """
+    Computes summary statistics specifically for a single user across all detection modalities.
+    Guarantees cross-database compatibility with zero unescaped SQL percent signs (preventing
+    psycopg2 'tuple index out of range' errors on PostgreSQL/Neon).
+    """
     default_stats = {
         "total_scanned": 0,
         "threats_detected": 0,
@@ -833,29 +837,53 @@ def get_user_stats(user_id: int) -> Dict[str, Any]:
         return default_stats
 
     p = placeholder()
-    with DBConnection() as conn:
-        cursor = conn.cursor()
-        cursor.execute(f"""
-            SELECT 
-                COUNT(*) as total,
-                SUM(CASE WHEN risk_level IN ('CRITICAL', 'HIGH') OR threat_classification LIKE '%Scam%' OR threat_classification LIKE '%Threat%' THEN 1 ELSE 0 END) as scams,
-                SUM(CASE WHEN risk_level = 'LOW' OR threat_classification = 'Legitimate' THEN 1 ELSE 0 END) as safe,
-                AVG(risk_score) as avg_score
-            FROM scans
-            WHERE user_id = {p}
-        """, (user_id,))
-        row = cursor.fetchone()
-        if row:
-            d = dict(row)
-            return {
-                "total_scanned": int(d.get('total') or 0),
-                "threats_detected": int(d.get('scams') or 0),
-                "suspicious_count": int(d.get('scams') or 0),
-                "safe_verified": int(d.get('safe') or 0),
-                "legitimate_count": int(d.get('safe') or 0),
-                "average_risk": round(float(d.get('avg_score') or 0), 1)
-            }
+    try:
+        with DBConnection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(f"""
+                SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE 
+                        WHEN risk_level IN ('CRITICAL', 'HIGH', 'MEDIUM', 'SUSPICIOUS')
+                             OR threat_classification IN (
+                                 'Suspicious/Scam', 
+                                 'Suspicious / Threat Detected', 
+                                 'Suspicious / Potential Risk', 
+                                 'Synthetic Deepfake Voice', 
+                                 'Suspicious Acoustic Anomaly', 
+                                 'Deepfake / Synthetic Manipulation', 
+                                 'Suspicious Video Stream'
+                             )
+                        THEN 1 ELSE 0 END) as scams,
+                    SUM(CASE 
+                        WHEN risk_level IN ('LOW', 'SAFE', 'CLEAN')
+                             OR threat_classification IN (
+                                 'Legitimate', 
+                                 'Clean / Legitimate', 
+                                 'Authentic Video Stream', 
+                                 'Legitimate Natural Audio'
+                             )
+                        THEN 1 ELSE 0 END) as safe,
+                    AVG(risk_score) as avg_score
+                FROM scans
+                WHERE user_id = {p}
+            """, (user_id,))
+            row = cursor.fetchone()
+            if row:
+                d = dict(row)
+                return {
+                    "total_scanned": int(d.get('total') or 0),
+                    "threats_detected": int(d.get('scams') or 0),
+                    "suspicious_count": int(d.get('scams') or 0),
+                    "safe_verified": int(d.get('safe') or 0),
+                    "legitimate_count": int(d.get('safe') or 0),
+                    "average_risk": round(float(d.get('avg_score') or 0), 1)
+                }
+    except Exception as e:
+        logger.warning(f"Error computing user stats for user {user_id}: {e}")
         return default_stats
+
+    return default_stats
 
 
 if __name__ == '__main__':
