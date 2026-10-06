@@ -96,6 +96,7 @@ body {
 }
 
 /* Clean background subtle pattern */
+.subtle-bg-pattern,
 .cyber-grid-overlay {
     position: fixed;
     top: 0;
