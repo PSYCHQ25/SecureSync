@@ -5,25 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SecureSync – 500 Internal Error</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body class="auth-body">
     <div class="cyber-grid-overlay"></div>
-    <div class="auth-container" style="text-align: center;">
-        <div style="font-family: var(--font-mono); font-size: 5rem; font-weight: 800; color: var(--amber-warn); text-shadow: 0 0 20px var(--amber-glow);">
-            500
-        </div>
-        <h2 style="margin: 12px 0; color: var(--text-primary);">Internal Service Interruption</h2>
-        <p style="color: var(--text-secondary); max-width: 480px; margin: 0 auto 24px; font-size: 0.9rem;">
-            The threat intelligence backend experienced an unhandled condition. The incident has been contained and logged to audit logs.
-        </p>
-        <div style="display: flex; gap: 12px; justify-content: center;">
-            <a href="{{ url_for('home') }}" class="btn-primary" style="text-decoration: none; padding: 10px 20px;">
-                SecureSync Home
-            </a>
-            <a href="{{ url_for('dashboard') }}" class="btn-primary" style="text-decoration: none; padding: 10px 20px; background: transparent; border: 1px solid var(--border-accent);">
-                Return to Dashboard
-            </a>
+    <div class="auth-container" style="text-align: center; max-width: 520px;">
+        <div class="auth-card card" style="padding: 40px 32px;">
+            <div style="font-family: var(--font-mono); font-size: 4.5rem; font-weight: 800; color: var(--red-threat); line-height: 1; margin-bottom: 12px;">
+                500
+            </div>
+            <h2 style="margin: 8px 0 12px; color: var(--text-primary); font-size: 1.4rem; font-weight: 800;">Internal Service Interruption</h2>
+            <p style="color: var(--text-secondary); max-width: 440px; margin: 0 auto 28px; font-size: 0.92rem; line-height: 1.6;">
+                The threat intelligence backend experienced an unhandled condition. The incident has been safely contained and logged to audit logs.
+            </p>
+            <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                <a href="{{ url_for('dashboard') }}" class="btn-primary" style="padding: 10px 22px;">
+                    Return to Dashboard
+                </a>
+                <a href="{{ url_for('home') }}" class="btn-secondary" style="padding: 10px 22px;">
+                    SecureSync Home
+                </a>
+            </div>
         </div>
     </div>
 </body>

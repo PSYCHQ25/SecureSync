@@ -5,25 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SecureSync – 429 Rate Limit Exceeded</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body class="auth-body">
     <div class="cyber-grid-overlay"></div>
-    <div class="auth-container" style="text-align: center;">
-        <div style="font-family: var(--font-mono); font-size: 5rem; font-weight: 800; color: #f59e0b; text-shadow: 0 0 20px rgba(245, 158, 11, 0.4);">
-            429
-        </div>
-        <h2 style="margin: 12px 0; color: var(--text-primary);">Security Throttling: Rate Limit Exceeded</h2>
-        <p style="color: var(--text-secondary); max-width: 480px; margin: 0 auto 24px; font-size: 0.95rem; line-height: 1.6;">
-            Excessive request velocity detected. To safeguard our threat intelligence engine against automated abuse and brute force attempts, your connection is temporarily throttled. Please wait a few moments before trying again.
-        </p>
-        <div style="display: flex; gap: 12px; justify-content: center;">
-            <a href="{{ url_for('dashboard') }}" class="btn-primary" style="text-decoration: none; padding: 12px 24px;">
-                Return to Dashboard
-            </a>
-            <a href="{{ url_for('home') }}" class="btn-primary" style="text-decoration: none; padding: 12px 24px; background: transparent; border: 1px solid var(--border-color);">
-                Home
-            </a>
+    <div class="auth-container" style="text-align: center; max-width: 520px;">
+        <div class="auth-card card" style="padding: 40px 32px;">
+            <div style="font-family: var(--font-mono); font-size: 4.5rem; font-weight: 800; color: var(--amber-warn); line-height: 1; margin-bottom: 12px;">
+                429
+            </div>
+            <h2 style="margin: 8px 0 12px; color: var(--text-primary); font-size: 1.4rem; font-weight: 800;">Rate Limit Exceeded</h2>
+            <p style="color: var(--text-secondary); max-width: 440px; margin: 0 auto 28px; font-size: 0.92rem; line-height: 1.6;">
+                Excessive request velocity detected. To safeguard our threat intelligence engine against automated abuse and brute force attempts, your connection is temporarily throttled. Please wait a few moments before trying again.
+            </p>
+            <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                <a href="{{ url_for('dashboard') }}" class="btn-primary" style="padding: 10px 22px;">
+                    Return to Dashboard
+                </a>
+                <a href="{{ url_for('home') }}" class="btn-secondary" style="padding: 10px 22px;">
+                    SecureSync Home
+                </a>
+            </div>
         </div>
     </div>
 </body>

@@ -8,228 +8,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        .dashboard-nav-links {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-        .dashboard-nav-links a, .dashboard-nav-links button {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-            font-weight: 500;
-            text-decoration: none;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            transition: var(--transition);
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .dashboard-nav-links a:hover, .dashboard-nav-links button:hover, .dashboard-nav-links a.active {
-            color: var(--cyan);
-        }
-        .welcome-hero {
-            background: linear-gradient(180deg, rgba(17, 23, 38, 0.8) 0%, rgba(10, 14, 23, 0.6) 100%);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            padding: 24px 30px;
-            margin-bottom: 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-        .welcome-hero h1 {
-            font-size: 1.8rem;
-            color: var(--text-primary);
-            margin-bottom: 6px;
-        }
-        .welcome-hero p {
-            color: var(--text-secondary);
-            font-size: 0.92rem;
-            margin: 0;
-            max-width: 680px;
-            line-height: 1.5;
-        }
-        .scan-id-badge {
-            font-family: var(--font-mono);
-            background: rgba(0, 240, 255, 0.08);
-            border: 1px solid rgba(0, 240, 255, 0.25);
-            color: var(--cyan);
-            padding: 4px 10px;
-            border-radius: var(--radius-sm);
-            font-size: 0.8rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .modality-badge-indicator {
-            font-family: var(--font-mono);
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            padding: 3px 8px;
-            border-radius: 4px;
-            letter-spacing: 0.5px;
-        }
-        .modality-badge-text { background: rgba(0, 240, 255, 0.15); color: var(--cyan); border: 1px solid var(--cyan); }
-        .modality-badge-image { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid #c084fc; }
-        .modality-badge-audio { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid #fbbf24; }
-        .modality-badge-video { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid #f87171; }
-        
-        .media-dropzone {
-            border: 2px dashed rgba(0, 240, 255, 0.25);
-            background: rgba(10, 14, 23, 0.5);
-            border-radius: var(--radius-md);
-            padding: 36px 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: var(--transition);
-            margin-top: 14px;
-        }
-        .media-dropzone:hover, .media-dropzone.dragover {
-            border-color: var(--cyan);
-            background: rgba(0, 240, 255, 0.05);
-            box-shadow: 0 0 25px rgba(0, 240, 255, 0.15);
-        }
-        .dropzone-icon {
-            color: var(--cyan);
-            margin-bottom: 12px;
-        }
-        .media-preview-container {
-            margin-top: 16px;
-            background: rgba(0,0,0,0.4);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-md);
-            padding: 16px;
-            display: none;
-        }
-        .media-preview-container.active {
-            display: block;
-        }
-        .media-preview-content {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            flex-wrap: wrap;
-        }
-        .media-preview-thumb {
-            max-width: 140px;
-            max-height: 100px;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            object-fit: cover;
-        }
-        .media-preview-audio {
-            width: 100%;
-            height: 38px;
-            border-radius: 6px;
-        }
-        .media-preview-video {
-            max-width: 260px;
-            max-height: 140px;
-            border-radius: 6px;
-        }
-        .media-info-text {
-            flex: 1;
-            min-width: 180px;
-        }
-        .media-info-name {
-            font-weight: 700;
-            color: #ffffff;
-            font-size: 0.95rem;
-            word-break: break-all;
-        }
-        .media-info-size {
-            font-family: var(--font-mono);
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            margin-top: 4px;
-        }
-        .action-bar-report {
-            display: flex;
-            gap: 12px;
-            margin-top: 20px;
-            padding-top: 18px;
-            border-top: 1px solid var(--border-color);
-            flex-wrap: wrap;
-        }
-        .btn-download-pdf {
-            background: linear-gradient(135deg, #00f0ff 0%, #0284c7 100%);
-            color: #06090e;
-            font-weight: 700;
-            padding: 10px 20px;
-            border-radius: var(--radius-sm);
-            border: none;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.9rem;
-            transition: var(--transition);
-        }
-        .btn-download-pdf:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 18px rgba(0, 240, 255, 0.4);
-            color: #000;
-        }
-        .technical-forensics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 10px;
-            margin-top: 12px;
-        }
-        .tech-metric-card {
-            background: rgba(0,0,0,0.3);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-sm);
-            padding: 8px 12px;
-        }
-        .tech-metric-label {
-            font-size: 0.72rem;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            display: block;
-            margin-bottom: 2px;
-        }
-        .tech-metric-val {
-            font-family: var(--font-mono);
-            font-size: 0.85rem;
-            color: var(--text-primary);
-            font-weight: 600;
-            word-break: break-all;
-        }
-        .history-filters {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 14px;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .history-modality-tabs {
-            display: flex;
-            gap: 6px;
-        }
-        .history-mod-btn {
-            background: rgba(255,255,255,0.04);
-            border: 1px solid var(--border-color);
-            color: var(--text-secondary);
-            padding: 4px 12px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-        .history-mod-btn.active, .history-mod-btn:hover {
-            border-color: var(--cyan);
-            color: var(--cyan);
-            background: rgba(0,240,255,0.08);
-        }
-    </style>
 </head>
 <body>
     <div class="cyber-grid-overlay"></div>
@@ -270,12 +48,12 @@
                     </svg>
                     Scan History
                 </button>
-                <a href="{{ url_for('account') }}" title="Security & Privacy Settings">
+                <a href="{{ url_for('account') }}" title="Profile, Settings &amp; Privacy">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                         <circle cx="12" cy="7" r="4"/>
                     </svg>
-                    Settings & Privacy
+                    Profile &amp; Settings
                 </a>
             </nav>
 
@@ -361,22 +139,9 @@
                     <span class="stat-value safe-text" id="stat-legit">0</span>
                 </div>
             </div>
-
-            <div class="stat-card">
-                <div class="stat-icon icon-accuracy">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <polyline points="12 6 12 12 16 14"/>
-                    </svg>
-                </div>
-                <div class="stat-info">
-                    <span class="stat-label">Model Accuracy & Confidence</span>
-                    <span class="stat-value cyan-text" id="stat-accuracy">95.65%</span>
-                </div>
-            </div>
         </section>
 
-        <!-- 5-Way Multi-Modal Workspace Tabs -->
+        <!-- 4 Multi-Modal Detection Modalities -->
         <div class="workspace-tabs">
             <button type="button" class="tab-btn active" id="tab-btn-text" data-mode="text">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -390,7 +155,7 @@
                     <circle cx="8.5" cy="8.5" r="1.5"/>
                     <polyline points="21 15 16 10 5 21"/>
                 </svg>
-                🖼️ Image Forensics (Quishing / Phish)
+                🖼️ Image Detection
             </button>
             <button type="button" class="tab-btn" id="tab-btn-audio" data-mode="audio">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -399,21 +164,14 @@
                     <line x1="12" y1="19" x2="12" y2="23"/>
                     <line x1="8" y1="23" x2="16" y2="23"/>
                 </svg>
-                🎙️ Audio (Deepfake Voice / Vishing)
+                🎙️ Audio Detection
             </button>
             <button type="button" class="tab-btn" id="tab-btn-video" data-mode="video">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                     <polygon points="23 7 16 12 23 17 23 7"/>
                     <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
                 </svg>
-                🎥 Video (Deepfake / Container)
-            </button>
-            <button type="button" class="tab-btn" id="tab-btn-bulk" data-mode="bulk">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                </svg>
-                📁 Bulk Chat (WhatsApp / CSV)
+                🎥 Video Detection
             </button>
         </div>
 
@@ -505,7 +263,7 @@
                                 <polyline points="21 15 16 10 5 21"/>
                             </svg>
                         </div>
-                        <h3 style="color:#ffffff; margin-bottom:6px; font-size:1.05rem;">Drag &amp; drop suspect image, or click to browse</h3>
+                        <h3>Drag &amp; drop suspect image, or click to browse</h3>
                         <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">Detects QR code phishing (quishing), fake banking receipts, steganographic payloads, and metadata tampering.</p>
                         <input type="file" id="image-file-input" accept=".jpg,.jpeg,.png,.webp,.gif,.bmp" style="display:none;">
                     </div>
@@ -560,7 +318,7 @@
                                 <line x1="8" y1="23" x2="16" y2="23"/>
                             </svg>
                         </div>
-                        <h3 style="color:#ffffff; margin-bottom:6px; font-size:1.05rem;">Drag &amp; drop audio file, or click to browse</h3>
+                        <h3>Drag &amp; drop audio file, or click to browse</h3>
                         <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">Detects neural vocoder cutoff (Tacotron/ElevenLabs), vishing social engineering, and acoustic steganography.</p>
                         <input type="file" id="audio-file-input" accept=".wav,.mp3,.ogg,.flac,.m4a,.aac" style="display:none;">
                     </div>
@@ -613,7 +371,7 @@
                                 <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
                             </svg>
                         </div>
-                        <h3 style="color:#ffffff; margin-bottom:6px; font-size:1.05rem;">Drag &amp; drop video clip, or click to browse</h3>
+                        <h3>Drag &amp; drop video clip, or click to browse</h3>
                         <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">Detects synthetic face pipelines (Roop/SadTalker/Wav2Lip), atom corruption, and video phishing overlays.</p>
                         <input type="file" id="video-file-input" accept=".mp4,.webm,.mkv,.mov,.avi" style="display:none;">
                     </div>
@@ -640,35 +398,6 @@
                     </div>
                 </div>
 
-                <!-- 5. BULK CHAT SCANNER PANEL -->
-                <div id="panel-bulk" class="modality-panel hidden">
-                    <div class="panel-header">
-                        <div class="panel-title-wrap">
-                            <span class="panel-badge">DATASET / CHAT PARSER</span>
-                            <h2>Bulk Conversation Scanner</h2>
-                        </div>
-                        <span class="helper-text">WhatsApp .txt exports or CSV message datasets</span>
-                    </div>
-
-                    <div class="presets-section">
-                        <span class="presets-title">Quick Action:</span>
-                        <button type="button" class="pill pill-scam" id="btn-load-demo-chat">Load WhatsApp Demo Chat (10 Msgs)</button>
-                    </div>
-
-                    <div class="media-dropzone" id="bulk-dropzone">
-                        <div class="dropzone-icon">
-                            <svg viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="currentColor" stroke-width="1.8">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <line x1="16" y1="13" x2="8" y2="13"/>
-                                <line x1="16" y1="17" x2="8" y2="17"/>
-                            </svg>
-                        </div>
-                        <h3 style="color:#ffffff; margin-bottom:6px; font-size:1.05rem;">Drag &amp; drop chat export (.txt) or CSV, or click to browse</h3>
-                        <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">Scans complete chat transcripts with timeline reconstruction and multi-user risk filtering.</p>
-                        <input type="file" id="bulk-file-input" accept=".txt,.csv" style="display:none;">
-                    </div>
-                </div>
             </div>
 
             <!-- RIGHT CONSOLE: Threat Intelligence & Forensic Report -->
@@ -684,6 +413,12 @@
                             <span class="indicator-dot"></span>
                             <span id="scan-timestamp">Standby</span>
                         </div>
+                        <button type="button" class="btn-table-action" id="btn-clear-results" title="Reset analysis results" style="margin-left: 4px;">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                            </svg>
+                            Clear Results
+                        </button>
                     </div>
                 </div>
 
@@ -820,104 +555,6 @@
                 </div>
             </section>
         </div>
-
-        <!-- Bulk Chat Results Section (Visible when bulk scan finishes) -->
-        <div class="bulk-results-wrapper hidden" id="bulk-results-panel" style="margin-top: 24px;">
-            <div class="card">
-                <div class="panel-header">
-                    <div class="panel-title-wrap">
-                        <span class="panel-badge">BULK CONVERSATION FORENSICS</span>
-                        <h2>Chat Inspection Findings</h2>
-                    </div>
-                    <button type="button" class="btn-primary" id="btn-export-bulk-results">Export Findings (JSON)</button>
-                </div>
-
-                <div class="bulk-summary-bar">
-                    <div class="bulk-stat">
-                        <span class="bulk-stat-label">Total Messages</span>
-                        <span class="bulk-stat-val" id="bulk-total">0</span>
-                    </div>
-                    <div class="bulk-stat">
-                        <span class="bulk-stat-label">Suspicious Threats</span>
-                        <span class="bulk-stat-val threat-text" id="bulk-scams">0</span>
-                    </div>
-                    <div class="bulk-stat">
-                        <span class="bulk-stat-label">Verified Clean</span>
-                        <span class="bulk-stat-val safe-text" id="bulk-legit">0</span>
-                    </div>
-                    <div class="bulk-stat">
-                        <span class="bulk-stat-label">Threat Percentage</span>
-                        <span class="bulk-stat-val" id="bulk-threat-level">0%</span>
-                    </div>
-                </div>
-
-                <div class="bulk-filter-bar" style="margin: 18px 0 12px;">
-                    <div class="filter-group">
-                        <button class="filter-btn active" data-filter="all">All Messages (<span id="count-all">0</span>)</button>
-                        <button class="filter-btn" data-filter="scam">Threats Only (<span id="count-scam">0</span>)</button>
-                        <button class="filter-btn" data-filter="legit">Legitimate Only (<span id="count-legit">0</span>)</button>
-                    </div>
-                </div>
-
-                <div class="table-responsive">
-                    <table class="bulk-table">
-                        <thead>
-                            <tr>
-                                <th>Status</th>
-                                <th>Participant / Time</th>
-                                <th>Message Snippet</th>
-                                <th>Threat Assessment</th>
-                                <th>Detected Indicators</th>
-                            </tr>
-                        </thead>
-                        <tbody id="bulk-table-body">
-                            <!-- Populated dynamically -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Educational & Multi-Modal Architecture Section -->
-        <section class="edu-section card" style="margin-top: 24px;">
-            <div class="edu-header">
-                <div>
-                    <span class="panel-badge">ARCHITECTURE &amp; BENCHMARKS</span>
-                    <h2>SecureSync Multi-Modal Threat Detection Pipeline</h2>
-                </div>
-                <button type="button" class="btn-text" id="toggle-edu-btn">Toggle Architecture</button>
-            </div>
-
-            <div class="edu-content" id="edu-content">
-                <div class="workflow-steps">
-                    <div class="step-card">
-                        <div class="step-num">1</div>
-                        <div class="step-title">Text Engine</div>
-                        <div class="step-desc">TF-IDF Vectorization with Logistic Regression, heuristic rule matching, and URL defanging.</div>
-                    </div>
-                    <div class="step-card">
-                        <div class="step-num">2</div>
-                        <div class="step-title">Image Forensics</div>
-                        <div class="step-desc">Quishing QR extraction, trailing byte inspection past EOF markers, and Shannon entropy analysis.</div>
-                    </div>
-                    <div class="step-card">
-                        <div class="step-num">3</div>
-                        <div class="step-title">Audio Forensics</div>
-                        <div class="step-desc">FFT spectral roll-off analysis, zero-crossing rate dynamics, and synthetic voice vocoder cutoff detection.</div>
-                    </div>
-                    <div class="step-card">
-                        <div class="step-num">4</div>
-                        <div class="step-title">Video Forensics</div>
-                        <div class="step-desc">ISO BMFF atom tree verification, encoder tool signatures (Roop/SadTalker), and AV sync drift assessment.</div>
-                    </div>
-                    <div class="step-card">
-                        <div class="step-num">5</div>
-                        <div class="step-title">PDF Intelligence</div>
-                        <div class="step-desc">Cryptographically signed, commercial-style PDF reports generated on-demand via ReportLab.</div>
-                    </div>
-                </div>
-            </div>
-        </section>
     </main>
 
     <footer class="footer">

@@ -114,7 +114,6 @@ document.addEventListener('DOMContentLoaded', () => {
     async function init() {
         await Promise.all([
             fetchStats(),
-            fetchMetrics(),
             fetchSamples()
         ]);
         updateCounters();
@@ -122,6 +121,12 @@ document.addEventListener('DOMContentLoaded', () => {
         setupDragAndDrop();
         setupDemoSamples();
         setupHistoryModal();
+
+        // Wire the Clear Results button in the report header
+        const btnClearResults = document.getElementById('btn-clear-results');
+        if (btnClearResults) {
+            btnClearResults.addEventListener('click', resetResultState);
+        }
     }
 
     async function fetchStats() {
@@ -178,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (statTotalEl) statTotalEl.textContent = stats.total_scanned ?? 0;
         if (statScamEl) statScamEl.textContent = stats.threats_detected ?? stats.suspicious_count ?? 0;
         if (statLegitEl) statLegitEl.textContent = stats.safe_verified ?? stats.legitimate_count ?? 0;
-        if (statAccuracyEl) statAccuracyEl.textContent = `${stats.model_accuracy || 95.65}%`;
+        if (statAccuracyEl && stats.model_accuracy) statAccuracyEl.textContent = `${stats.model_accuracy}%`;
     }
 
     // -------------------------------------------------------------------------
@@ -190,8 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'text': document.getElementById('panel-text'),
             'image': document.getElementById('panel-image'),
             'audio': document.getElementById('panel-audio'),
-            'video': document.getElementById('panel-video'),
-            'bulk': document.getElementById('panel-bulk')
+            'video': document.getElementById('panel-video')
         };
 
         tabs.forEach(tab => {
@@ -1324,20 +1328,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div style="display:flex; gap:16px; align-items:center;">
                     <span class="risk-badge risk-${(s.risk_level || 'low').toLowerCase()}">Risk: ${escapeHTML(s.risk_level)}</span>
-                    <span style="font-family:var(--font-mono); font-weight:700; color:var(--cyan); font-size:1.1rem;">Score: ${s.risk_score ?? s.confidence}%</span>
+                    <span style="font-family:var(--font-mono); font-weight:700; color:var(--primary); font-size:1.1rem;">Score: ${s.risk_score ?? s.confidence}%</span>
                 </div>
             </div>
 
             <div style="margin-bottom:18px;">
                 <label style="font-size:0.8rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; letter-spacing:0.5px;">Target Asset Payload / Evidence</label>
-                <div style="background:rgba(0,0,0,0.4); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:14px; font-family:var(--font-mono); font-size:0.85rem; color:var(--text-primary); margin-top:6px; word-break:break-word; max-height:160px; overflow-y:auto;">
+                <div style="background:var(--bg-subtle); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:14px; font-family:var(--font-mono); font-size:0.85rem; color:var(--text-primary); margin-top:6px; word-break:break-word; max-height:160px; overflow-y:auto;">
                     ${escapeHTML(s.submitted_message)}
                 </div>
             </div>
 
             <div style="margin-bottom:18px;">
                 <label style="font-size:0.8rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; letter-spacing:0.5px;">Recommended Protective Directive</label>
-                <div style="background:rgba(0,240,255,0.06); border:1px solid rgba(0,240,255,0.2); border-radius:var(--radius-sm); padding:12px 14px; color:var(--text-primary); margin-top:6px; font-size:0.9rem;">
+                <div style="background:var(--primary-light); border:1px solid var(--primary-border); border-radius:var(--radius-sm); padding:12px 14px; color:var(--text-primary); margin-top:6px; font-size:0.9rem;">
                     ${escapeHTML(s.recommended_action || 'No action required.')}
                 </div>
             </div>
