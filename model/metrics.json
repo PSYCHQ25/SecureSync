@@ -1,9 +1,15 @@
 {
     "model_name": "Logistic Regression",
+    "evaluation_type": "Empirical held-out test split (Stratified 80/20, seed=42)",
+    "dataset_file": "dataset/messages.csv",
+    "total_dataset_samples": 111,
+    "test_samples": 23,
+    "train_samples": 88,
     "accuracy": 95.65,
     "precision": 91.67,
     "recall": 100.0,
     "f1_score": 95.65,
+    "hybrid_pipeline_accuracy": 95.65,
     "confusion_matrix": {
         "true_negatives": 11,
         "false_positives": 1,
@@ -86,7 +92,5 @@
             },
             "is_champion": false
         }
-    ],
-    "test_samples": 23,
-    "train_samples": 88
+    ]
 }

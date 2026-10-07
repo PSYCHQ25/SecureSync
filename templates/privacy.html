@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SecureSync Privacy Policy: Transparent disclosure of zero-trust ephemeral file processing, metadata storage boundaries, data isolation, and user deletion rights.">
+    <title>SecureSync – Multi Detection System | Privacy Policy</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        .legal-page-wrap {
+            max-width: 980px;
+            margin: 40px auto 80px;
+            padding: 0 24px;
+        }
+        .legal-card {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 44px;
+            box-shadow: var(--shadow-sm);
+        }
+        .legal-header {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 24px;
+            margin-bottom: 32px;
+        }
+        .legal-header h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            letter-spacing: -0.6px;
+            margin-bottom: 8px;
+        }
+        .legal-meta {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+        .legal-section {
+            margin-bottom: 36px;
+        }
+        .legal-section h2 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .legal-section p, .legal-section li {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.7;
+            margin-bottom: 12px;
+        }
+        .legal-section ul {
+            padding-left: 24px;
+            margin-bottom: 16px;
+        }
+        .highlight-box {
+            background: var(--bg-hover);
+            border-left: 4px solid var(--primary);
+            padding: 16px 20px;
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+            margin: 18px 0;
+        }
+        .highlight-box p {
+            margin: 0;
+            color: var(--text-primary);
+            font-weight: 500;
+            font-size: 0.92rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="subtle-bg-pattern"></div>
+
+    <header class="navbar landing-nav">
+        <div class="nav-container">
+            <div class="brand">
+                <a href="{{ url_for('home') }}" style="display: flex; align-items: center; gap: 12px; text-decoration: none;">
+                    <div class="brand-icon">
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <path d="M9 12l2 2 4-4"/>
+                        </svg>
+                    </div>
+                    <div class="brand-text">
+                        <span class="brand-title">SecureSync</span>
+                        <span class="brand-tag">Multi Detection System</span>
+                    </div>
+                </a>
+            </div>
+
+            <div class="landing-nav-links">
+                <a href="{{ url_for('home') }}">Platform Home</a>
+                <a href="{{ url_for('privacy') }}" class="active" style="color: var(--primary); font-weight: 600;">Privacy Policy</a>
+                <a href="{{ url_for('terms') }}">Terms of Service</a>
+            </div>
+
+            <div class="nav-right">
+                {% if session.get('user_id') %}
+                <a href="{{ url_for('dashboard') }}" class="btn-nav-action btn-primary" style="padding: 8px 18px;">
+                    Console
+                </a>
+                {% else %}
+                <a href="{{ url_for('login') }}" class="btn-nav-action" style="padding: 8px 18px;">
+                    Sign In
+                </a>
+                <a href="{{ url_for('register') }}" class="btn-nav-action btn-primary" style="padding: 8px 18px;">
+                    Create Account
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <main class="legal-page-wrap">
+        <div class="legal-card">
+            <div class="legal-header">
+                <div class="section-badge">Data Governance &amp; Compliance</div>
+                <h1>Privacy Policy</h1>
+                <div class="legal-meta">Version 3.2 • Effective Date: October 2026 • Zero-Trust Ephemeral Processing Standard</div>
+            </div>
+
+            <div class="legal-section">
+                <h2>1. Executive Summary &amp; Zero-Trust Commitment</h2>
+                <p>
+                    SecureSync ("SecureSync", "we", "our", or "the Platform") operates a commercial multi-modal threat intelligence system for analyzing text messages, images, audio recordings, and video containers. We understand that security analysts and individuals submit sensitive communications for triage.
+                </p>
+                <div class="highlight-box">
+                    <p>
+                        🛡️ <strong>Core Principle:</strong> SecureSync does NOT sell your data, does NOT train public AI models on your private messages or media, and does NOT retain original uploaded binary files. All scanning occurs in isolated, ephemeral memory buffers.
+                    </p>
+                </div>
+            </div>
+
+            <div class="legal-section">
+                <h2>2. File Processing: How Your Uploads Are Handled</h2>
+                <p>
+                    When you submit a text message, image, audio file, or video clip for forensic investigation:
+                </p>
+                <ul>
+                    <li><strong>In-Memory Processing:</strong> Uploaded assets are decoded strictly within temporary volatile memory (RAM) or short-lived ephemeral memory streams during analysis.</li>
+                    <li><strong>No External API Delegation:</strong> All Machine Learning models (TF-IDF vectorizers, logistic regressors, acoustic signal transforms, ISO BMFF atom parsers) execute directly on our isolated runtime environment. No payloads are sent to third-party language models or external commercial APIs.</li>
+                    <li><strong>Immediate Binary Disposal:</strong> Once forensic indicators, cryptographic hashes (SHA-256), and risk scores are derived, the raw binary file data is immediately evicted and garbage-collected from system memory.</li>
+                </ul>
+            </div>
+
+            <div class="legal-section">
+                <h2>3. Data Storage &amp; What We Store</h2>
+                <p>
+                    SecureSync strictly limits persistent storage to what is necessary for your authenticated account history and downloadable PDF forensic reporting:
+                </p>
+                <ul>
+                    <li><strong>User Account Information:</strong> Username, email address, password hash (cryptographically salted PBKDF2:SHA-256), full name, analyst role, and current subscription plan tier.</li>
+                    <li><strong>Scan Metadata:</strong> Unique Scan Reference ID, submission timestamp, detected risk score (0–100), risk level (CRITICAL, HIGH, MEDIUM, LOW), threat category, plain-language detection reasons, and defanged URL reports.</li>
+                    <li><strong>Technical Forensic Attributes:</strong> Extracted file SHA-256 checksum, Shannon entropy calculation, duration, format/dimensions, and encoder signatures.</li>
+                    <li><strong>What We Do NOT Store:</strong> We NEVER store the original uploaded image files, audio tracks, or video footage on disk or in persistent object storage.</li>
+                </ul>
+            </div>
+
+            <div class="legal-section">
+                <h2>4. Multi-Tenant User Isolation</h2>
+                <p>
+                    Every database record (scans, credentials, audit records) is enforced with strict multi-tenant boundary isolation. Queries are parameterized and scoped strictly by the authenticated <code>user_id</code>. No user or analyst can view, search, export, or download forensic investigation reports belonging to any other user.
+                </p>
+            </div>
+
+            <div class="legal-section">
+                <h2>5. Data Retention, Custom Lifecycles &amp; Erasure</h2>
+                <p>
+                    You retain total ownership and unilateral control over your forensic data:
+                </p>
+                <ul>
+                    <li><strong>Configurable Retention Cycles:</strong> In your Account Command Center, you can set your automated retention lifecycle to 30 days, 90 days, 365 days, or indefinite.</li>
+                    <li><strong>Scan History Purge:</strong> You may click "Clear Scan History Only" at any time to permanently wipe all stored scan metadata and audit logs while preserving your active user account.</li>
+                    <li><strong>Permanent Account Deletion (GDPR Article 17):</strong> Clicking "Delete Account Permanently" immediately executes a complete database cascade deletion, permanently erasing your user credentials, audit trails, active sessions, and password recovery tokens with zero retained backups.</li>
+                </ul>
+            </div>
+
+            <div class="legal-section">
+                <h2>6. Data Portability (GDPR Article 20 &amp; CCPA)</h2>
+                <p>
+                    You have the right to full data portability. At any time via your Account Settings, you can download an instantaneous, structured JSON archive containing your full user profile, security preferences, and every historic scan report recorded in your account.
+                </p>
+            </div>
+
+            <div class="legal-section">
+                <h2>7. Contact &amp; Privacy Officer</h2>
+                <p>
+                    For inquiries regarding data governance, enterprise compliance reviews, or cryptographic auditing standards, contact our security operations team at <code>security@securesync.internal</code>.
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2026 <strong>SecureSync – Multi Detection System</strong>. Enterprise Threat Defense &amp; Media Intelligence. All rights reserved.</p>
+        <p class="disclaimer-text">
+            <a href="{{ url_for('privacy') }}" style="color: var(--primary); text-decoration: none;">Privacy Policy</a> • 
+            <a href="{{ url_for('terms') }}" style="color: var(--primary); text-decoration: none;">Terms of Service</a> • 
+            Multi-tenant user data isolation with salted PBKDF2:SHA-256 credentials.
+        </p>
+    </footer>
+</body>
+</html>

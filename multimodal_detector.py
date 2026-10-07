@@ -260,6 +260,27 @@ class ImageThreatDetector:
             if not reasons:
                 reasons.append("Structural header, dimensions, and byte sequence match authentic image standards.")
 
+        # Determine Primary Threat Category
+        if is_threat:
+            if any("Quishing" in ind['name'] for ind in indicators):
+                threat_category = "Quishing (QR Code Phishing)"
+            elif any("Steganographic" in ind['name'] for ind in indicators):
+                threat_category = "Steganographic Payload & Polyglot"
+            elif any("Synthetic" in ind['name'] or "Editing" in ind['name'] for ind in indicators):
+                threat_category = "Visual Forgery & Metadata Tampering"
+            elif any("Deceptive" in ind['name'] for ind in indicators):
+                threat_category = "Visual Phishing & Invoice Lure"
+            else:
+                threat_category = "Suspicious Graphic / Visual Anomaly"
+        else:
+            threat_category = "Clean Photographic / Visual Asset"
+
+        evidence = {
+            "matched_indicators": indicators,
+            "quarantined_urls": quarantined_links,
+            "forensic_details": forensic_details
+        }
+
         return {
             "scan_id": scan_id,
             "modality": "image",
@@ -267,6 +288,7 @@ class ImageThreatDetector:
             "filename": filename,
             "classification": classification,
             "threat_classification": classification,
+            "threat_category": threat_category,
             "is_scam": is_threat,
             "is_threat": is_threat,
             "confidence": round(risk_score, 1),
@@ -276,6 +298,8 @@ class ImageThreatDetector:
             "suspicious_indicators": indicators,
             "reasons": reasons,
             "detection_reasons": reasons,
+            "why_flagged": reasons,
+            "evidence": evidence,
             "recommended_action": recommended_action,
             "links": quarantined_links,
             "forensic_details": forensic_details
@@ -487,6 +511,22 @@ class AudioThreatDetector:
             if not reasons:
                 reasons.append("Acoustic harmonic distribution and spectral roll-off are consistent with genuine human vocal cords.")
 
+        # Determine Primary Threat Category
+        if is_threat:
+            if synthetic_score >= 0.55 or any("Vocoder" in ind['name'] or "Synthetic" in ind['name'] for ind in indicators):
+                threat_category = "Synthetic Voice Clone (Deepfake Audio)"
+            elif any("Vishing" in ind['name'] for ind in indicators):
+                threat_category = "Vishing (Voice Social Engineering)"
+            else:
+                threat_category = "Acoustic Signal Anomaly"
+        else:
+            threat_category = "Authentic Natural Voice Audio"
+
+        evidence = {
+            "matched_indicators": indicators,
+            "forensic_details": forensic_details
+        }
+
         return {
             "scan_id": scan_id,
             "modality": "audio",
@@ -494,6 +534,7 @@ class AudioThreatDetector:
             "filename": filename,
             "classification": classification,
             "threat_classification": classification,
+            "threat_category": threat_category,
             "is_scam": is_threat,
             "is_threat": is_threat,
             "confidence": round(max(risk_score, (100 - risk_score) if not is_threat else risk_score), 1),
@@ -503,6 +544,8 @@ class AudioThreatDetector:
             "suspicious_indicators": indicators,
             "reasons": reasons,
             "detection_reasons": reasons,
+            "why_flagged": reasons,
+            "evidence": evidence,
             "recommended_action": recommended_action,
             "links": [],
             "forensic_details": forensic_details
@@ -676,6 +719,25 @@ class VideoThreatDetector:
             if not reasons:
                 reasons.append("Video stream container hierarchy and codec structure conform to standard digital camera recordings.")
 
+        # Determine Primary Threat Category
+        if is_threat:
+            if any("SadTalker" in ind['name'] or "Roop" in ind['name'] or "Face Swap" in ind['name'] or "Deepfake" in ind['name'] for ind in indicators):
+                threat_category = "Synthetic Deepfake Video (AI Face Swap)"
+            elif any("Lip-Sync" in ind['name'] or "Desynchronization" in ind['name'] for ind in indicators):
+                threat_category = "Audio-Visual Desynchronization Tampering"
+            elif quarantined_links:
+                threat_category = "Video Container Embedded Phishing Link"
+            else:
+                threat_category = "Suspicious Video Container / Re-encoding Anomaly"
+        else:
+            threat_category = "Authentic Camera Video Stream"
+
+        evidence = {
+            "matched_indicators": indicators,
+            "quarantined_urls": quarantined_links,
+            "forensic_details": forensic_details
+        }
+
         return {
             "scan_id": scan_id,
             "modality": "video",
@@ -683,6 +745,7 @@ class VideoThreatDetector:
             "filename": filename,
             "classification": classification,
             "threat_classification": classification,
+            "threat_category": threat_category,
             "is_scam": is_threat,
             "is_threat": is_threat,
             "confidence": round(max(risk_score, (100 - risk_score) if not is_threat else risk_score), 1),
@@ -692,6 +755,8 @@ class VideoThreatDetector:
             "suspicious_indicators": indicators,
             "reasons": reasons,
             "detection_reasons": reasons,
+            "why_flagged": reasons,
+            "evidence": evidence,
             "recommended_action": recommended_action,
             "links": quarantined_links,
             "forensic_details": forensic_details
@@ -722,3 +787,101 @@ def get_video_detector() -> VideoThreatDetector:
     if _video_detector is None:
         _video_detector = VideoThreatDetector()
     return _video_detector
+
+
+# =============================================================================
+# FILE UPLOAD VALIDATION & CORRUPTED FILE DEFENSE
+# =============================================================================
+def validate_image_file(file_bytes: bytes, filename: str) -> Tuple[bool, Optional[str]]:
+    """
+    Validates uploaded image file bytes, format magic signatures, and integrity.
+    Returns (is_valid, error_message).
+    """
+    if not file_bytes:
+        return False, "Uploaded image file is empty (0 bytes)."
+    if len(file_bytes) > 15 * 1024 * 1024:
+        return False, "Image file exceeds maximum permitted size of 15 MB."
+
+    allowed_exts = ('.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp')
+    if not any(filename.lower().endswith(ext) for ext in allowed_exts):
+        return False, f"Unsupported image format: file extension '{os.path.splitext(filename)[1]}' not allowed. Allowed image formats: {', '.join(allowed_exts)}"
+
+    # Magic byte verification
+    is_jpeg = file_bytes.startswith(b'\xff\xd8\xff')
+    is_png = file_bytes.startswith(b'\x89PNG\r\n\x1a\n')
+    is_gif = file_bytes.startswith((b'GIF87a', b'GIF89a'))
+    is_webp = len(file_bytes) >= 12 and file_bytes[:4] == b'RIFF' and file_bytes[8:12] == b'WEBP'
+    is_bmp = file_bytes.startswith(b'BM')
+
+    if not (is_jpeg or is_png or is_gif or is_webp or is_bmp):
+        if HAS_PIL:
+            try:
+                img = Image.open(io.BytesIO(file_bytes))
+                img.verify()
+            except Exception:
+                return False, "Uploaded file is not a valid or readable image. Please provide an uncorrupted JPG, PNG, WEBP, GIF, or BMP file."
+        else:
+            return False, "Uploaded file header does not match any recognized image format."
+
+    if HAS_PIL:
+        try:
+            img = Image.open(io.BytesIO(file_bytes))
+            if img.width <= 0 or img.height <= 0:
+                return False, "Image has invalid or corrupted dimensions."
+        except Exception as e:
+            return False, f"Image file is corrupted and could not be decoded: {str(e)}"
+
+    return True, None
+
+
+def validate_audio_file(file_bytes: bytes, filename: str) -> Tuple[bool, Optional[str]]:
+    """
+    Validates uploaded audio file bytes, format headers, and stream readability.
+    Returns (is_valid, error_message).
+    """
+    if not file_bytes:
+        return False, "Uploaded audio file is empty (0 bytes)."
+    if len(file_bytes) > 25 * 1024 * 1024:
+        return False, "Audio file exceeds maximum permitted size of 25 MB."
+
+    allowed_exts = ('.wav', '.mp3', '.ogg', '.flac', '.m4a', '.aac')
+    if not any(filename.lower().endswith(ext) for ext in allowed_exts):
+        return False, f"Unsupported audio extension '{os.path.splitext(filename)[1]}'. Allowed audio formats: {', '.join(allowed_exts)}"
+
+    # Audio signature verification
+    is_wav = len(file_bytes) >= 12 and file_bytes[:4] == b'RIFF' and file_bytes[8:12] == b'WAVE'
+    is_mp3 = file_bytes.startswith(b'ID3') or (len(file_bytes) >= 2 and file_bytes[0] == 0xFF and (file_bytes[1] & 0xE0) == 0xE0)
+    is_ogg = file_bytes.startswith(b'OggS')
+    is_flac = file_bytes.startswith(b'fLaC')
+    is_m4a = len(file_bytes) >= 8 and (b'ftyp' in file_bytes[:16] or b'M4A ' in file_bytes[:16])
+
+    if not (is_wav or is_mp3 or is_ogg or is_flac or is_m4a):
+        return False, "Uploaded file does not contain a recognized, valid audio stream. Please provide an uncorrupted WAV, MP3, OGG, or FLAC file."
+
+    return True, None
+
+
+def validate_video_file(file_bytes: bytes, filename: str) -> Tuple[bool, Optional[str]]:
+    """
+    Validates uploaded video file bytes, container atoms, and format integrity.
+    Returns (is_valid, error_message).
+    """
+    if not file_bytes:
+        return False, "Uploaded video file is empty (0 bytes)."
+    if len(file_bytes) > 35 * 1024 * 1024:
+        return False, "Video file exceeds maximum permitted size of 35 MB."
+
+    allowed_exts = ('.mp4', '.webm', '.mkv', '.mov', '.avi')
+    if not any(filename.lower().endswith(ext) for ext in allowed_exts):
+        return False, f"Unsupported video extension '{os.path.splitext(filename)[1]}'. Allowed video formats: {', '.join(allowed_exts)}"
+
+    # Video signature verification
+    is_isobmff = len(file_bytes) >= 8 and (b'ftyp' in file_bytes[:16] or b'moov' in file_bytes[:32])
+    is_ebml = file_bytes.startswith(b'\x1a\x45\xdf\xa3')
+    is_avi = len(file_bytes) >= 12 and file_bytes[:4] == b'RIFF' and file_bytes[8:12] == b'AVI '
+
+    if not (is_isobmff or is_ebml or is_avi):
+        return False, "Uploaded file does not contain a recognized, valid video container. Please provide an uncorrupted MP4, WEBM, MKV, or MOV file."
+
+    return True, None
+

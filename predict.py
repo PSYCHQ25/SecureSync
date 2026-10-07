@@ -411,11 +411,48 @@ class ScamDetector:
             if not indicators:
                 reasons.append("No urgent social engineering, suspicious keywords, or unauthorized link shorteners detected.")
 
+        # Determine Primary Threat Category
+        if is_scam:
+            if any(ind['name'] == 'Credential & OTP Solicitation' for ind in indicators):
+                threat_category = "Credential Theft & OTP Harvesting"
+            elif any(ind['name'] == 'Deceptive Banking / Security Alert' for ind in indicators):
+                threat_category = "Bank Impersonation Phishing"
+            elif any(ind['name'] == 'Suspicious Phishing Link' for ind in indicators):
+                threat_category = "Brand Spoofing & Phishing Link"
+            elif any(ind['name'] == 'Urgent Money Request' for ind in indicators):
+                threat_category = "Impersonation & Urgent Extortion"
+            elif any(ind['name'] == 'Delivery & Package Impersonation' for ind in indicators):
+                threat_category = "Delivery / Postal Smishing"
+            elif any(ind['name'] == 'Fake Prize or Reward' for ind in indicators):
+                threat_category = "Advance-Fee Lottery & Prize Fraud"
+            elif any(ind['name'] == 'Job & Investment Fraud' for ind in indicators):
+                threat_category = "Cryptocurrency & Job Offer Fraud"
+            elif any(ind['name'] == 'Service / Utility Disconnection Threat' for ind in indicators):
+                threat_category = "Utility & Service Extortion Threat"
+            elif any(ind['name'] == 'Coercive / Threatening Language' for ind in indicators):
+                threat_category = "Law Enforcement & Intimidation Scam"
+            elif links:
+                threat_category = "Obfuscated Link Phishing"
+            else:
+                threat_category = "Social Engineering & Deceptive Intent"
+        else:
+            threat_category = "Benign Communication / Legitimate"
+
         # Unique scan ID and UTC timestamp
         import uuid
         from datetime import datetime, timezone
         scan_id = f"SCN-{uuid.uuid4().hex[:12].upper()}"
         timestamp_str = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+
+        evidence = {
+            "matched_indicators": indicators,
+            "quarantined_urls": links,
+            "linguistic_metrics": {
+                "character_count": len(original_text),
+                "word_count": len(original_text.split()),
+                "scam_intent_probability": round(prob_scam * 100, 1)
+            }
+        }
 
         return {
             "scan_id": scan_id,
@@ -424,6 +461,7 @@ class ScamDetector:
             "safe_display_text": safe_display_text,
             "classification": classification,
             "threat_classification": classification,
+            "threat_category": threat_category,
             "is_scam": is_scam,
             "confidence": confidence_percentage,
             "risk_score": risk_score,
@@ -439,6 +477,8 @@ class ScamDetector:
             "suspicious_indicators": indicators,
             "reasons": reasons,
             "detection_reasons": reasons,
+            "why_flagged": reasons,
+            "evidence": evidence,
             "char_count": len(original_text),
             "word_count": len(original_text.split())
         }

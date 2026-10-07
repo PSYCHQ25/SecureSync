@@ -35,7 +35,14 @@ from flask import (
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from predict import analyze_message, METRICS_PATH
-from multimodal_detector import get_image_detector, get_audio_detector, get_video_detector
+from multimodal_detector import (
+    get_image_detector,
+    get_audio_detector,
+    get_video_detector,
+    validate_image_file,
+    validate_audio_file,
+    validate_video_file
+)
 from report_generator import generate_pdf_report
 from database import (
     init_db,
@@ -54,7 +61,9 @@ from database import (
     clear_user_scans,
     export_user_data,
     get_user_privacy_settings,
-    update_user_privacy_settings
+    update_user_privacy_settings,
+    update_user_profile,
+    get_user_plan_usage
 )
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
@@ -136,7 +145,7 @@ def validate_session_user():
         if not user:
             session.clear()
             public_endpoints = {
-                'static', 'login', 'register', 'home', 'health',
+                'static', 'login', 'register', 'home', 'health', 'privacy', 'terms',
                 'forgot_password', 'reset_password', 'get_samples', 'get_metrics', None
             }
             if request.endpoint not in public_endpoints:
@@ -261,6 +270,18 @@ def home():
             return redirect(url_for('dashboard'))
         session.clear()
     return render_template('home.html')
+
+
+@app.route('/privacy')
+def privacy():
+    """Privacy Policy explaining file processing, storage, and deletion."""
+    return render_template('privacy.html')
+
+
+@app.route('/terms')
+def terms():
+    """Terms of Service and acceptable use policy."""
+    return render_template('terms.html')
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -402,11 +423,34 @@ def history():
 @app.route('/account', methods=['GET'])
 @login_required
 def account():
-    """User account management & security settings page."""
+    """User account management, subscription usage, and security settings page."""
     current_user = get_user_by_id(session['user_id'])
     privacy_settings = get_user_privacy_settings(session['user_id'])
     user_stats = get_user_stats(session['user_id'])
-    return render_template('account.html', current_user=current_user, privacy_settings=privacy_settings, user_stats=user_stats)
+    plan_usage = get_user_plan_usage(session['user_id'])
+    return render_template(
+        'account.html',
+        current_user=current_user,
+        privacy_settings=privacy_settings,
+        user_stats=user_stats,
+        plan_usage=plan_usage
+    )
+
+
+@app.route('/account/update-profile', methods=['POST'])
+@login_required
+def update_profile():
+    """Updates user display name and analyst role."""
+    full_name = request.form.get('full_name', '').strip()
+    role = request.form.get('role', '').strip()
+    res = update_user_profile(session['user_id'], full_name=full_name, role=role)
+    if res['success']:
+        session['full_name'] = res['full_name']
+        session['role'] = res['role']
+        flash("Analyst profile updated successfully.", "success")
+    else:
+        flash(res['message'], "danger")
+    return redirect(url_for('account'))
 
 
 @app.route('/account/update-settings', methods=['POST'])
@@ -664,8 +708,10 @@ def reset_password(token):
 @login_required
 def get_stats():
     """Returns live statistics isolated to the logged-in user."""
-    user_stats = get_user_stats(session.get('user_id'))
+    user_id = session.get('user_id')
+    user_stats = get_user_stats(user_id)
     user_stats['model_accuracy'] = stats.get('model_accuracy', 95.65)
+    user_stats['plan_usage'] = get_user_plan_usage(user_id)
     return jsonify({
         "status": "success",
         "stats": user_stats
@@ -755,6 +801,14 @@ def scan_image():
         session.clear()
         return jsonify({"status": "error", "message": "User session expired."}), 401
 
+    plan_usage = get_user_plan_usage(user['id'])
+    if plan_usage.get('limit_reached'):
+        return jsonify({
+            "status": "error",
+            "message": f"Daily scan limit reached for your Free plan ({plan_usage['daily_limit']} scans/day). Upgrade to Pro for unlimited scans.",
+            "plan_limit_reached": True
+        }), 429
+
     if is_scan_rate_limited(user['id']):
         return jsonify({"status": "error", "message": "Scan rate limit reached. Please wait a moment."}), 429
 
@@ -763,16 +817,11 @@ def scan_image():
 
     file = request.files['file']
     filename = file.filename or 'upload.jpg'
-    allowed_exts = ('.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp')
-    if not any(filename.lower().endswith(ext) for ext in allowed_exts):
-        return jsonify({"status": "error", "message": f"Unsupported image format. Allowed: {', '.join(allowed_exts)}"}), 400
-
     raw_bytes = file.read()
-    if not raw_bytes:
-        return jsonify({"status": "error", "message": "Uploaded image file is empty."}), 400
 
-    if len(raw_bytes) > 15 * 1024 * 1024:
-        return jsonify({"status": "error", "message": "Image exceeds maximum size (15 MB)."}), 400
+    is_valid, err_msg = validate_image_file(raw_bytes, filename)
+    if not is_valid:
+        return jsonify({"status": "error", "message": err_msg}), 400
 
     try:
         detector = get_image_detector()
@@ -786,6 +835,9 @@ def scan_image():
             stats["legitimate_count"] += 1
 
         summary_msg = f"Image Forensics: {filename} ({result['forensic_details'].get('dimensions', 'N/A')}, {result['forensic_details'].get('format', 'Img')})"
+        tech_details = dict(result.get('forensic_details') or {})
+        tech_details['threat_category'] = result.get('threat_category', '')
+
         saved_scan_id = save_scan(
             user_id=user['id'],
             submitted_message=summary_msg,
@@ -798,12 +850,13 @@ def scan_image():
             modality='image',
             file_name=filename,
             file_hash=result['forensic_details'].get('sha256', ''),
-            technical_details=result['forensic_details']
+            technical_details=tech_details
         )
         result['scan_id'] = saved_scan_id
 
         user_stats = get_user_stats(user['id'])
         user_stats['model_accuracy'] = stats.get('model_accuracy', 95.65)
+        user_stats['plan_usage'] = get_user_plan_usage(user['id'])
 
         return jsonify({
             "status": "success",
@@ -828,6 +881,14 @@ def scan_audio():
         session.clear()
         return jsonify({"status": "error", "message": "User session expired."}), 401
 
+    plan_usage = get_user_plan_usage(user['id'])
+    if plan_usage.get('limit_reached'):
+        return jsonify({
+            "status": "error",
+            "message": f"Daily scan limit reached for your Free plan ({plan_usage['daily_limit']} scans/day). Upgrade to Pro for unlimited scans.",
+            "plan_limit_reached": True
+        }), 429
+
     if is_scan_rate_limited(user['id']):
         return jsonify({"status": "error", "message": "Scan rate limit reached. Please wait a moment."}), 429
 
@@ -836,16 +897,11 @@ def scan_audio():
 
     file = request.files['file']
     filename = file.filename or 'recording.wav'
-    allowed_exts = ('.wav', '.mp3', '.ogg', '.flac', '.m4a', '.aac')
-    if not any(filename.lower().endswith(ext) for ext in allowed_exts):
-        return jsonify({"status": "error", "message": f"Unsupported audio format. Allowed: {', '.join(allowed_exts)}"}), 400
-
     raw_bytes = file.read()
-    if not raw_bytes:
-        return jsonify({"status": "error", "message": "Uploaded audio file is empty."}), 400
 
-    if len(raw_bytes) > 25 * 1024 * 1024:
-        return jsonify({"status": "error", "message": "Audio exceeds maximum size (25 MB)."}), 400
+    is_valid, err_msg = validate_audio_file(raw_bytes, filename)
+    if not is_valid:
+        return jsonify({"status": "error", "message": err_msg}), 400
 
     try:
         detector = get_audio_detector()
@@ -858,6 +914,9 @@ def scan_audio():
             stats["legitimate_count"] += 1
 
         summary_msg = f"Audio Forensics: {filename} ({result['forensic_details'].get('format', 'Audio')}, {result['forensic_details'].get('duration_seconds', 0)}s)"
+        tech_details = dict(result.get('forensic_details') or {})
+        tech_details['threat_category'] = result.get('threat_category', '')
+
         saved_scan_id = save_scan(
             user_id=user['id'],
             submitted_message=summary_msg,
@@ -870,12 +929,13 @@ def scan_audio():
             modality='audio',
             file_name=filename,
             file_hash=result['forensic_details'].get('sha256', ''),
-            technical_details=result['forensic_details']
+            technical_details=tech_details
         )
         result['scan_id'] = saved_scan_id
 
         user_stats = get_user_stats(user['id'])
         user_stats['model_accuracy'] = stats.get('model_accuracy', 95.65)
+        user_stats['plan_usage'] = get_user_plan_usage(user['id'])
 
         return jsonify({
             "status": "success",
@@ -900,6 +960,14 @@ def scan_video():
         session.clear()
         return jsonify({"status": "error", "message": "User session expired."}), 401
 
+    plan_usage = get_user_plan_usage(user['id'])
+    if plan_usage.get('limit_reached'):
+        return jsonify({
+            "status": "error",
+            "message": f"Daily scan limit reached for your Free plan ({plan_usage['daily_limit']} scans/day). Upgrade to Pro for unlimited scans.",
+            "plan_limit_reached": True
+        }), 429
+
     if is_scan_rate_limited(user['id']):
         return jsonify({"status": "error", "message": "Scan rate limit reached. Please wait a moment."}), 429
 
@@ -908,16 +976,11 @@ def scan_video():
 
     file = request.files['file']
     filename = file.filename or 'video.mp4'
-    allowed_exts = ('.mp4', '.webm', '.mkv', '.mov', '.avi')
-    if not any(filename.lower().endswith(ext) for ext in allowed_exts):
-        return jsonify({"status": "error", "message": f"Unsupported video format. Allowed: {', '.join(allowed_exts)}"}), 400
-
     raw_bytes = file.read()
-    if not raw_bytes:
-        return jsonify({"status": "error", "message": "Uploaded video file is empty."}), 400
 
-    if len(raw_bytes) > 35 * 1024 * 1024:
-        return jsonify({"status": "error", "message": "Video exceeds maximum size (35 MB)."}), 400
+    is_valid, err_msg = validate_video_file(raw_bytes, filename)
+    if not is_valid:
+        return jsonify({"status": "error", "message": err_msg}), 400
 
     try:
         detector = get_video_detector()
@@ -930,6 +993,9 @@ def scan_video():
             stats["legitimate_count"] += 1
 
         summary_msg = f"Video Forensics: {filename} ({result['forensic_details'].get('container', 'Video')})"
+        tech_details = dict(result.get('forensic_details') or {})
+        tech_details['threat_category'] = result.get('threat_category', '')
+
         saved_scan_id = save_scan(
             user_id=user['id'],
             submitted_message=summary_msg,
@@ -942,12 +1008,13 @@ def scan_video():
             modality='video',
             file_name=filename,
             file_hash=result['forensic_details'].get('sha256', ''),
-            technical_details=result['forensic_details']
+            technical_details=tech_details
         )
         result['scan_id'] = saved_scan_id
 
         user_stats = get_user_stats(user['id'])
         user_stats['model_accuracy'] = stats.get('model_accuracy', 95.65)
+        user_stats['plan_usage'] = get_user_plan_usage(user['id'])
 
         return jsonify({
             "status": "success",
@@ -974,6 +1041,14 @@ def scan_message():
             "status": "error",
             "message": "User session is invalid or user not found. Please log in again."
         }), 401
+
+    plan_usage = get_user_plan_usage(user['id'])
+    if plan_usage.get('limit_reached'):
+        return jsonify({
+            "status": "error",
+            "message": f"Daily scan limit reached for your Free plan ({plan_usage['daily_limit']} scans/day). Upgrade to Pro for unlimited scans.",
+            "plan_limit_reached": True
+        }), 429
 
     if is_scan_rate_limited(user['id']):
         return jsonify({
@@ -1011,6 +1086,11 @@ def scan_message():
         else:
             stats["legitimate_count"] += 1
 
+        tech_details = {
+            "threat_category": analysis.get('threat_category', 'General Threat'),
+            "linguistic_metrics": analysis.get('evidence', {}).get('linguistic_metrics', {})
+        }
+
         # Save scan report permanently to database strictly linked to authenticated user['id']
         saved_scan_id = save_scan(
             user_id=user['id'],
@@ -1020,7 +1100,9 @@ def scan_message():
             threat_classification=analysis.get('classification', 'Legitimate'),
             detection_reasons=analysis.get('reasons', []),
             suspicious_indicators=analysis.get('indicators', []),
-            recommended_action=analysis.get('recommended_action', '')
+            recommended_action=analysis.get('recommended_action', ''),
+            modality='text',
+            technical_details=tech_details
         )
 
         analysis['scan_id'] = saved_scan_id
@@ -1028,6 +1110,7 @@ def scan_message():
         # Fetch updated user-specific statistics
         user_stats = get_user_stats(user['id'])
         user_stats['model_accuracy'] = stats.get('model_accuracy', 95.65)
+        user_stats['plan_usage'] = get_user_plan_usage(user['id'])
 
         return jsonify({
             "status": "success",
@@ -1065,6 +1148,14 @@ def scan_file():
             "message": "User session is invalid or user not found. Please log in again."
         }), 401
 
+    plan_usage = get_user_plan_usage(user['id'])
+    if plan_usage.get('limit_reached'):
+        return jsonify({
+            "status": "error",
+            "message": f"Daily scan limit reached for your Free plan ({plan_usage['daily_limit']} scans/day). Upgrade to Pro for unlimited scans.",
+            "plan_limit_reached": True
+        }), 429
+
     if is_scan_rate_limited(user['id']):
         return jsonify({
             "status": "error",
@@ -1078,12 +1169,19 @@ def scan_file():
     filename = file.filename or ''
 
     if not filename:
-        return jsonify({"status": "error", "message": "Empty filename"}), 400
+        return jsonify({"status": "error", "message": "Empty filename provided."}), 400
+
+    allowed_exts = ('.txt', '.csv')
+    if not any(filename.lower().endswith(ext) for ext in allowed_exts):
+        return jsonify({"status": "error", "message": "Unsupported file format. Please upload a WhatsApp chat export (.txt) or CSV spreadsheet (.csv)."}), 400
 
     try:
         raw_bytes = file.read()
         if not raw_bytes:
-            return jsonify({"status": "error", "message": "Uploaded file is empty"}), 400
+            return jsonify({"status": "error", "message": "Uploaded file is empty (0 bytes)."}), 400
+
+        if len(raw_bytes) > 10 * 1024 * 1024:
+            return jsonify({"status": "error", "message": "File exceeds maximum size limit (10 MB)."}), 400
 
         # Handle UTF-16 BOM or UTF-8 BOM
         if raw_bytes.startswith(b'\xff\xfe') or raw_bytes.startswith(b'\xfe\xff'):
@@ -1202,6 +1300,7 @@ def scan_file():
 
         user_stats = get_user_stats(user['id'])
         user_stats['model_accuracy'] = stats.get('model_accuracy', 95.65)
+        user_stats['plan_usage'] = get_user_plan_usage(user['id'])
 
         return jsonify({
             "status": "success",

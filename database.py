@@ -127,6 +127,7 @@ def init_db():
                     password_hash VARCHAR(255) NOT NULL,
                     full_name VARCHAR(150),
                     role VARCHAR(50) DEFAULT 'Security Analyst',
+                    plan VARCHAR(20) DEFAULT 'free',
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                 );
             ''')
@@ -169,6 +170,7 @@ def init_db():
             # Safe column additions if needed (non-destructive migrations)
             cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name VARCHAR(150);')
             cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT \'Security Analyst\';')
+            cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS plan VARCHAR(20) DEFAULT \'free\';')
             cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS privacy_settings TEXT DEFAULT \'{"auto_quarantine_links": true, "sanitize_metadata": true, "retention_days": 90}\';')
             cursor.execute('ALTER TABLE scans ADD COLUMN IF NOT EXISTS modality VARCHAR(20) DEFAULT \'text\';')
             cursor.execute('ALTER TABLE scans ADD COLUMN IF NOT EXISTS file_name VARCHAR(255) DEFAULT \'\';')
@@ -187,6 +189,7 @@ def init_db():
                     password_hash TEXT NOT NULL,
                     full_name TEXT,
                     role TEXT DEFAULT 'Security Analyst',
+                    plan TEXT DEFAULT 'free',
                     privacy_settings TEXT DEFAULT '{"auto_quarantine_links": true, "sanitize_metadata": true, "retention_days": 90}',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
@@ -239,6 +242,8 @@ def init_db():
 
             cursor.execute("PRAGMA table_info(users)")
             user_cols = [row[1] for row in cursor.fetchall()]
+            if 'plan' not in user_cols:
+                cursor.execute("ALTER TABLE users ADD COLUMN plan TEXT DEFAULT 'free';")
             if 'privacy_settings' not in user_cols:
                 cursor.execute("ALTER TABLE users ADD COLUMN privacy_settings TEXT DEFAULT '{\"auto_quarantine_links\": true, \"sanitize_metadata\": true, \"retention_days\": 90}';")
 
@@ -357,13 +362,14 @@ def authenticate_user(identifier: str, password: str) -> Optional[Dict[str, Any]
                 "email": user_dict['email'],
                 "full_name": user_dict.get('full_name') or user_dict['username'],
                 "role": user_dict.get('role', 'Security Analyst'),
+                "plan": user_dict.get('plan') or 'free',
                 "created_at": str(user_dict.get('created_at', ''))
             }
         return None
 
 
 def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
-    """Retrieves user profile by ID."""
+    """Retrieves user profile by ID including plan tier."""
     if not user_id:
         return None
     try:
@@ -374,11 +380,12 @@ def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
     p = placeholder()
     with DBConnection() as conn:
         cursor = conn.cursor()
-        cursor.execute(f"SELECT id, username, email, full_name, role, created_at FROM users WHERE id = {p}", (user_id,))
+        cursor.execute(f"SELECT id, username, email, full_name, role, plan, created_at FROM users WHERE id = {p}", (user_id,))
         row = cursor.fetchone()
         if row:
             d = dict(row)
             d['id'] = int(d['id'])
+            d['plan'] = d.get('plan') or 'free'
             d['created_at'] = str(d.get('created_at', ''))
             return d
         return None
@@ -391,9 +398,74 @@ def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
     p = placeholder()
     with DBConnection() as conn:
         cursor = conn.cursor()
-        cursor.execute(f"SELECT id, username, email, full_name, role FROM users WHERE LOWER(email) = LOWER({p})", (email.strip().lower(),))
+        cursor.execute(f"SELECT id, username, email, full_name, role, plan FROM users WHERE LOWER(email) = LOWER({p})", (email.strip().lower(),))
         row = cursor.fetchone()
-        return dict(row) if row else None
+        if row:
+            d = dict(row)
+            d['plan'] = d.get('plan') or 'free'
+            return d
+        return None
+
+
+def update_user_profile(user_id: int, full_name: Optional[str] = None, role: Optional[str] = None) -> Dict[str, Any]:
+    """Updates user full name and role."""
+    if not user_id:
+        return {"success": False, "message": "Invalid user ID."}
+    p = placeholder()
+    clean_name = (full_name or "").strip().replace('\x00', '')[:150]
+    clean_role = (role or "Security Analyst").strip().replace('\x00', '')[:50]
+    with DBConnection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"UPDATE users SET full_name = {p}, role = {p} WHERE id = {p}", (clean_name, clean_role, user_id))
+    return {"success": True, "message": "Profile updated successfully.", "full_name": clean_name, "role": clean_role}
+
+
+def get_user_plan_usage(user_id: int) -> Dict[str, Any]:
+    """
+    Computes daily scan usage and checks against plan limits (Free: 50 scans/day, Pro: 5,000/day).
+    Enforces tenant-isolated usage tracking.
+    """
+    default_usage = {
+        "plan": "free",
+        "daily_limit": 50,
+        "scans_today": 0,
+        "remaining_today": 50,
+        "limit_reached": False
+    }
+    if not user_id:
+        return default_usage
+
+    user = get_user_by_id(user_id)
+    if not user:
+        return default_usage
+
+    plan = (user.get('plan') or 'free').lower()
+    daily_limit = 5000 if plan == 'pro' else 50
+
+    p = placeholder()
+    start_of_today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    cutoff = start_of_today if is_postgres() else start_of_today.strftime('%Y-%m-%d %H:%M:%S')
+
+    with DBConnection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"""
+            SELECT COUNT(*) as count_today
+            FROM scans
+            WHERE user_id = {p} AND created_at >= {p}
+        """, (user_id, cutoff))
+        row = cursor.fetchone()
+        scans_today = int(dict(row)['count_today']) if row else 0
+
+    remaining = max(0, daily_limit - scans_today)
+    limit_reached = (scans_today >= daily_limit) if plan == 'free' else False
+
+    return {
+        "plan": plan,
+        "daily_limit": daily_limit,
+        "scans_today": scans_today,
+        "remaining_today": remaining,
+        "limit_reached": limit_reached
+    }
 
 
 def change_user_password(user_id: int, current_password: str, new_password: str) -> Dict[str, Any]:
@@ -769,6 +841,7 @@ def export_user_data(user_id: int) -> Optional[Dict[str, Any]]:
             "email": user['email'],
             "full_name": user.get('full_name'),
             "role": user.get('role'),
+            "plan": user.get('plan', 'free'),
             "created_at": user.get('created_at')
         },
         "privacy_preferences": privacy,

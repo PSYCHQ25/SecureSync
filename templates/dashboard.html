@@ -469,6 +469,11 @@
                         </div>
 
                         <div class="metric-card">
+                            <span class="metric-label">Threat Category</span>
+                            <div class="metric-highlight" id="result-threat-category" style="font-size: 1.05rem; word-break: break-word;">--</div>
+                        </div>
+
+                        <div class="metric-card">
                             <span class="metric-label">Threat Score &amp; Confidence</span>
                             <div class="metric-highlight" id="result-confidence">--%</div>
                             <div class="progress-track">
@@ -528,7 +533,7 @@
 
                     <!-- Explainability Reasons -->
                     <div class="section-container" style="margin-top: 18px;">
-                        <span class="section-title">Reasoning &amp; Algorithmic Insights</span>
+                        <span class="section-title">Why Flagged: Detection Reasons &amp; Algorithmic Insights</span>
                         <ul class="reasons-list" id="reasons-list">
                             <!-- Populated dynamically -->
                         </ul>
@@ -559,7 +564,11 @@
 
     <footer class="footer">
         <p>&copy; 2026 <strong>SecureSync – Multi Detection System</strong>. Enterprise Threat Defense &amp; Media Intelligence. All rights reserved.</p>
-        <p class="disclaimer-text">Multi-tenant user data isolation with salted PBKDF2:SHA-256 credentials. Zero-trust link defanging protects security analysts from outbound exploitation.</p>
+        <p class="disclaimer-text">
+            <a href="{{ url_for('privacy') }}" style="color: var(--primary); text-decoration: none;">Privacy Policy</a> &bull;
+            <a href="{{ url_for('terms') }}" style="color: var(--primary); text-decoration: none;">Terms of Service</a> &bull;
+            Multi-tenant user data isolation with salted PBKDF2:SHA-256 credentials. Zero-trust link defanging protects security analysts from outbound exploitation.
+        </p>
     </footer>
 
     <!-- User Scan History Modal -->

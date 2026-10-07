@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SecureSync Terms of Service: Authorized scanning boundaries, acceptable use policy, plan allowances, liability terms, and zero-trust security obligations.">
+    <title>SecureSync – Multi Detection System | Terms of Service</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        .legal-page-wrap {
+            max-width: 980px;
+            margin: 40px auto 80px;
+            padding: 0 24px;
+        }
+        .legal-card {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 44px;
+            box-shadow: var(--shadow-sm);
+        }
+        .legal-header {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 24px;
+            margin-bottom: 32px;
+        }
+        .legal-header h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            letter-spacing: -0.6px;
+            margin-bottom: 8px;
+        }
+        .legal-meta {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+        .legal-section {
+            margin-bottom: 36px;
+        }
+        .legal-section h2 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .legal-section p, .legal-section li {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.7;
+            margin-bottom: 12px;
+        }
+        .legal-section ul {
+            padding-left: 24px;
+            margin-bottom: 16px;
+        }
+        .highlight-box {
+            background: var(--bg-hover);
+            border-left: 4px solid var(--primary);
+            padding: 16px 20px;
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+            margin: 18px 0;
+        }
+        .highlight-box p {
+            margin: 0;
+            color: var(--text-primary);
+            font-weight: 500;
+            font-size: 0.92rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="subtle-bg-pattern"></div>
+
+    <header class="navbar landing-nav">
+        <div class="nav-container">
+            <div class="brand">
+                <a href="{{ url_for('home') }}" style="display: flex; align-items: center; gap: 12px; text-decoration: none;">
+                    <div class="brand-icon">
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <path d="M9 12l2 2 4-4"/>
+                        </svg>
+                    </div>
+                    <div class="brand-text">
+                        <span class="brand-title">SecureSync</span>
+                        <span class="brand-tag">Multi Detection System</span>
+                    </div>
+                </a>
+            </div>
+
+            <div class="landing-nav-links">
+                <a href="{{ url_for('home') }}">Platform Home</a>
+                <a href="{{ url_for('privacy') }}">Privacy Policy</a>
+                <a href="{{ url_for('terms') }}" class="active" style="color: var(--primary); font-weight: 600;">Terms of Service</a>
+            </div>
+
+            <div class="nav-right">
+                {% if session.get('user_id') %}
+                <a href="{{ url_for('dashboard') }}" class="btn-nav-action btn-primary" style="padding: 8px 18px;">
+                    Console
+                </a>
+                {% else %}
+                <a href="{{ url_for('login') }}" class="btn-nav-action" style="padding: 8px 18px;">
+                    Sign In
+                </a>
+                <a href="{{ url_for('register') }}" class="btn-nav-action btn-primary" style="padding: 8px 18px;">
+                    Create Account
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <main class="legal-page-wrap">
+        <div class="legal-card">
+            <div class="legal-header">
+                <div class="section-badge">Platform Agreement &amp; Acceptable Use</div>
+                <h1>Terms of Service</h1>
+                <div class="legal-meta">Version 3.2 • Effective Date: October 2026 • Commercial SaaS Standards</div>
+            </div>
+
+            <div class="legal-section">
+                <h2>1. Acceptance of Terms</h2>
+                <p>
+                    By registering an account, accessing the SecureSync Threat Console, or utilizing any of the detection engines (Text, Image, Audio, Video), you agree to be bound by these Terms of Service. If you are entering into this agreement on behalf of an organization, you represent that you possess authorization to bind said entity.
+                </p>
+            </div>
+
+            <div class="legal-section">
+                <h2>2. Authorized Use &amp; Scanning Boundaries</h2>
+                <p>
+                    SecureSync is engineered exclusively for cybersecurity defense, threat investigation, smishing/phishing triage, and forensic validation:
+                </p>
+                <ul>
+                    <li><strong>Ownership or Authorization Required:</strong> You agree that you will only submit messages, communications, screenshots, audio samples, or video files that you own, have received directly, or have explicit organizational authorization to inspect.</li>
+                    <li><strong>No Malicious Reverse Engineering:</strong> You agree not to probe, stress-test, or reverse-engineer the detection heuristics to assist in adversarial malware creation, evasion techniques, or unauthorized system exploitation.</li>
+                    <li><strong>Automated Abuse Prevention:</strong> Scraping, bulk automated request spamming, or attempting to bypass plan limits is strictly prohibited.</li>
+                </ul>
+            </div>
+
+            <div class="legal-section">
+                <h2>3. Advisory Nature of Forensic Findings</h2>
+                <div class="highlight-box">
+                    <p>
+                        ⚠️ <strong>Important Advisory Notice:</strong> SecureSync employs machine learning statistical inference, acoustic feature extraction, and heuristic pattern matching. Threat classifications and risk scores are assistive analytical estimates and do NOT constitute an infallible legal guarantee. Final security decisions must be verified by a qualified human security analyst or incident response professional.
+                    </p>
+                </div>
+            </div>
+
+            <div class="legal-section">
+                <h2>4. Subscription Plans &amp; Usage Quotas</h2>
+                <p>
+                    SecureSync provides tiered access to our multi-detection architecture:
+                </p>
+                <ul>
+                    <li><strong>Free Plan Tier:</strong> Provided at no cost for individual threat triage. Includes a daily limit of 50 multi-modal scans per user account, zero-trust link defanging, and basic PDF reporting.</li>
+                    <li><strong>Pro Plan Tier:</strong> Designed for professional security teams and incident responders. Includes elevated daily scan capacity (up to 5,000 scans/day), priority processing queues, and extended audit history retention.</li>
+                    <li><strong>Quota Enforcement:</strong> If your account reaches its daily scan allotment, subsequent scan requests will be paused until the daily UTC reset window or upon plan upgrade.</li>
+                </ul>
+            </div>
+
+            <div class="legal-section">
+                <h2>5. Limitation of Liability</h2>
+                <p>
+                    In no event shall SecureSync or its developers be held liable for any indirect, incidental, or consequential damages resulting from false positives, false negatives, reliance on detection recommendations, or unauthorized sender activity occurring prior to or following an inspection.
+                </p>
+            </div>
+
+            <div class="legal-section">
+                <h2>6. Account Termination &amp; Cancellation</h2>
+                <p>
+                    You may terminate your account at any time with immediate effect by clicking "Delete Account Permanently" inside your Account Settings. SecureSync reserves the right to suspend accounts that engage in abusive denial-of-service attempts or violations of authorized scanning boundaries.
+                </p>
+            </div>
+
+            <div class="legal-section">
+                <h2>7. Governing Law &amp; Inquiries</h2>
+                <p>
+                    These Terms are governed by standard commercial internet service provisions. For questions or commercial licensing inquiries, contact <code>support@securesync.internal</code>.
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2026 <strong>SecureSync – Multi Detection System</strong>. Enterprise Threat Defense &amp; Media Intelligence. All rights reserved.</p>
+        <p class="disclaimer-text">
+            <a href="{{ url_for('privacy') }}" style="color: var(--primary); text-decoration: none;">Privacy Policy</a> • 
+            <a href="{{ url_for('terms') }}" style="color: var(--primary); text-decoration: none;">Terms of Service</a> • 
+            Multi-tenant user data isolation with salted PBKDF2:SHA-256 credentials.
+        </p>
+    </footer>
+</body>
+</html>

@@ -56,7 +56,10 @@ from database import (
     clear_user_scans,
     export_user_data,
     update_user_privacy_settings,
-    get_user_privacy_settings
+    get_user_privacy_settings,
+    update_user_profile,
+    get_user_plan_usage,
+    get_user_by_id
 )
 from app import app, send_password_reset_email
 
@@ -1250,6 +1253,164 @@ class TestSecureSyncPipeline(unittest.TestCase):
         self.assertEqual(res_v2.status_code, 400)
 
         delete_user_account(user['id'])
+
+    def test_user_profile_update(self):
+        """Verify user profile update functionality and persistence."""
+        client = app.test_client()
+        u_name = "profile_tester"
+        register_user(u_name, "profile_tester@securesync.internal", "Password123!", full_name="Initial Name")
+        user = authenticate_user(u_name, "Password123!")
+        self.assertIsNotNone(user)
+
+        # Test direct database update
+        res = update_user_profile(user['id'], full_name="Updated Security Officer", role="Chief Information Security Officer")
+        self.assertTrue(res['success'])
+        self.assertEqual(res['full_name'], "Updated Security Officer")
+
+        updated_user = get_user_by_id(user['id'])
+        self.assertEqual(updated_user['full_name'], "Updated Security Officer")
+        self.assertEqual(updated_user['role'], "Chief Information Security Officer")
+
+        # Test via web route /account/update-profile
+        with client.session_transaction() as sess:
+            sess['user_id'] = user['id']
+            sess['username'] = user['username']
+
+        post_res = client.post('/account/update-profile', data={
+            'full_name': 'SecOps Lead',
+            'role': 'Threat Analyst'
+        }, follow_redirects=True)
+        self.assertEqual(post_res.status_code, 200)
+
+        refreshed = get_user_by_id(user['id'])
+        self.assertEqual(refreshed['full_name'], 'SecOps Lead')
+        self.assertEqual(refreshed['role'], 'Threat Analyst')
+
+        delete_user_account(user['id'])
+
+    def test_plan_usage_and_quota_enforcement(self):
+        """Verify SaaS plan usage tracking and 429 quota enforcement."""
+        client = app.test_client()
+        u_name = "quota_tester"
+        register_user(u_name, "quota_tester@securesync.internal", "Password123!")
+        user = authenticate_user(u_name, "Password123!")
+        self.assertIsNotNone(user)
+
+        # Check default plan usage for new Free user
+        usage = get_user_plan_usage(user['id'])
+        self.assertEqual(usage['plan'], 'free')
+        self.assertEqual(usage['daily_limit'], 50)
+        self.assertFalse(usage['limit_reached'])
+        self.assertGreaterEqual(usage['remaining_today'], 0)
+
+        with client.session_transaction() as sess:
+            sess['user_id'] = user['id']
+            sess['username'] = user['username']
+
+        # Normal scan within quota returns 200
+        scan_res = client.post('/api/scan', json={"message": "Meeting scheduled for 3pm in room 402."})
+        self.assertEqual(scan_res.status_code, 200)
+        self.assertEqual(scan_res.get_json()['status'], 'success')
+
+        # Mock quota limit reached to verify 429 enforcement
+        with patch('app.get_user_plan_usage') as mock_usage:
+            mock_usage.return_value = {
+                "plan": "free",
+                "daily_limit": 50,
+                "scans_today": 50,
+                "remaining_today": 0,
+                "limit_reached": True
+            }
+            limit_res = client.post('/api/scan', json={"message": "Another test message"})
+            self.assertEqual(limit_res.status_code, 429)
+            resp_data = limit_res.get_json()
+            self.assertEqual(resp_data['status'], 'error')
+            self.assertTrue(resp_data.get('plan_limit_reached'))
+            self.assertIn("Daily scan limit reached", resp_data['message'])
+
+        delete_user_account(user['id'])
+
+    def test_privacy_and_terms_routes(self):
+        """Verify Privacy Policy and Terms of Service endpoints return 200 with required disclosures."""
+        client = app.test_client()
+
+        res_privacy = client.get('/privacy')
+        self.assertEqual(res_privacy.status_code, 200)
+        privacy_html = res_privacy.data.decode('utf-8')
+        self.assertIn("Privacy Policy", privacy_html)
+        self.assertIn("Ephemeral Processing", privacy_html)
+        self.assertIn("Data Retention", privacy_html)
+
+        res_terms = client.get('/terms')
+        self.assertEqual(res_terms.status_code, 200)
+        terms_html = res_terms.data.decode('utf-8')
+        self.assertIn("Terms of Service", terms_html)
+        self.assertIn("Authorized Use", terms_html)
+        self.assertIn("Usage Quotas", terms_html)
+
+    def test_corrupted_file_upload_validation(self):
+        """Verify defensive upload validation rejects corrupt/malformed payload with 400."""
+        client = app.test_client()
+        u_name = "corrupt_tester"
+        register_user(u_name, "corrupt_tester@securesync.internal", "Password123!")
+        user = authenticate_user(u_name, "Password123!")
+
+        with client.session_transaction() as sess:
+            sess['user_id'] = user['id']
+            sess['username'] = user['username']
+
+        # Corrupted PNG with invalid chunk data
+        corrupted_png = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDRbadbadbad"
+        res_img = client.post(
+            '/api/scan/image',
+            data={'file': (io.BytesIO(corrupted_png), 'corrupt.png')},
+            content_type='multipart/form-data'
+        )
+        self.assertEqual(res_img.status_code, 400)
+        self.assertTrue(any(t in res_img.get_json()['message'].lower() for t in ["corrupt", "decode", "invalid", "readable"]))
+
+        # Corrupted audio file with non-audio garbage bytes
+        corrupted_wav = b"RANDOM_CORRUPTED_GARBAGE_BYTES_NOT_AUDIO"
+        res_aud = client.post(
+            '/api/scan/audio',
+            data={'file': (io.BytesIO(corrupted_wav), 'corrupt.wav')},
+            content_type='multipart/form-data'
+        )
+        self.assertEqual(res_aud.status_code, 400)
+        self.assertTrue(any(t in res_aud.get_json()['message'].lower() for t in ["corrupt", "recognized", "valid", "audio"]))
+
+        # Corrupted video file with non-video magic bytes
+        corrupted_vid = b"NOT_A_VIDEO_FILE_CORRUPTED_BYTES_HERE"
+        res_vid = client.post(
+            '/api/scan/video',
+            data={'file': (io.BytesIO(corrupted_vid), 'corrupt.mp4')},
+            content_type='multipart/form-data'
+        )
+        self.assertEqual(res_vid.status_code, 400)
+        self.assertTrue(any(t in res_vid.get_json()['message'].lower() for t in ["corrupt", "recognized", "valid", "video", "container"]))
+
+        delete_user_account(user['id'])
+
+    def test_threat_category_and_evidence_structure(self):
+        """Verify analyze_message returns threat_category, why_flagged, and structured evidence."""
+        phishing_msg = "URGENT: Your account has been suspended! Verify your credentials immediately at http://login-bank-verify.xyz"
+        report = analyze_message(phishing_msg)
+
+        self.assertIn('threat_category', report)
+        self.assertIn('why_flagged', report)
+        self.assertIn('evidence', report)
+        self.assertIn('recommended_action', report)
+        self.assertIsInstance(report['evidence'], dict)
+        self.assertIn('matched_indicators', report['evidence'])
+        self.assertIsInstance(report['why_flagged'], list)
+        self.assertIn(report['threat_category'], [
+            "Bank Impersonation Phishing",
+            "Credential Harvesting / Phishing",
+            "Financial Scam / Wire Fraud",
+            "Urgent Social Engineering",
+            "Malicious / Suspicious Link",
+            "Legitimate / Safe Communication"
+        ])
 
 
 if __name__ == '__main__':

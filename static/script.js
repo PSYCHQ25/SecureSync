@@ -81,6 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Metrics
     const resultClassification = document.getElementById('result-classification');
+    const resultThreatCategory = document.getElementById('result-threat-category');
     const resultConfidence = document.getElementById('result-confidence');
     const confidenceBar = document.getElementById('confidence-bar');
     const resultRisk = document.getElementById('result-risk');
@@ -107,6 +108,57 @@ document.addEventListener('DOMContentLoaded', () => {
     // Educational Section
     const toggleEduBtn = document.getElementById('toggle-edu-btn');
     const eduContent = document.getElementById('edu-content');
+
+    // -------------------------------------------------------------------------
+    // Error Toast Helper – replaces raw alert() for scan errors
+    // -------------------------------------------------------------------------
+    function showScanError(message, errorType) {
+        // errorType: 'quota' | 'validation' | 'auth' | 'error'
+        const existing = document.querySelector('.scan-error-toast');
+        if (existing) existing.remove();
+
+        const toast = document.createElement('div');
+        toast.className = 'scan-error-toast';
+
+        let icon = '⚠️';
+        let title = 'Scan Error';
+        let bgColor = 'var(--red-threat, #ff3366)';
+
+        if (errorType === 'quota') {
+            icon = '🔒';
+            title = 'Daily Scan Limit Reached';
+            bgColor = '#f59e0b';
+        } else if (errorType === 'validation') {
+            icon = '📄';
+            title = 'Invalid File';
+            bgColor = '#ef4444';
+        } else if (errorType === 'auth') {
+            icon = '🔑';
+            title = 'Authentication Required';
+        }
+
+        toast.style.cssText = `
+            position: fixed; top: 20px; right: 20px; z-index: 100000;
+            max-width: 420px; padding: 16px 20px;
+            background: ${bgColor}; color: #fff;
+            border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+            font-family: var(--font-body, sans-serif); font-size: 0.9rem;
+            display: flex; align-items: flex-start; gap: 12px;
+            animation: slideInRight 0.35s ease;
+        `;
+
+        toast.innerHTML = `
+            <span style="font-size: 1.4rem; flex-shrink: 0;">${icon}</span>
+            <div style="flex: 1;">
+                <div style="font-weight: 700; margin-bottom: 4px;">${title}</div>
+                <div style="opacity: 0.9; font-size: 0.84rem; line-height: 1.4;">${escapeHTML(message)}</div>
+            </div>
+            <button onclick="this.parentElement.remove()" style="background:none; border:none; color:#fff; font-size:1.2rem; cursor:pointer; padding:0; opacity:0.7;">&times;</button>
+        `;
+
+        document.body.appendChild(toast);
+        setTimeout(() => { if (toast.parentElement) toast.remove(); }, 8000);
+    }
 
     // -------------------------------------------------------------------------
     // 1. Initialization
@@ -276,7 +328,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (response.status === 401) {
-                alert('Session expired. Please sign in again.');
+                showScanError('Session expired. Please sign in again.', 'auth');
                 window.location.href = '/login';
                 return;
             }
@@ -287,12 +339,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderResult(data.analysis);
                 if (data.updated_stats) updateStatsUI(data.updated_stats);
             } else {
-                alert(`Scan Error: ${data.message || 'Analysis failed.'}`);
+                showScanError(data.message || 'Analysis failed.', response.status === 429 ? 'quota' : (response.status === 400 ? 'validation' : 'error'));
                 setLoading(false);
             }
         } catch (err) {
             console.error('Scan request error:', err);
-            alert('Network error while communicating with SecureSync backend.');
+            showScanError('Network error while communicating with SecureSync backend.', 'error');
             setLoading(false);
         }
     }
@@ -408,12 +460,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderResult(data.analysis);
                     if (data.updated_stats) updateStatsUI(data.updated_stats);
                 } else {
-                    alert(`Image Analysis Error: ${data.message || 'Scan failed.'}`);
+                    showScanError(data.message || 'Image scan failed.', res.status === 429 ? 'quota' : (res.status === 400 ? 'validation' : 'error'));
                     setLoading(false);
                 }
             } catch (err) {
                 console.error(err);
-                alert('Network error during image inspection.');
+                showScanError('Network error during image inspection.', 'error');
                 setLoading(false);
             }
         });
@@ -457,12 +509,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderResult(data.analysis);
                     if (data.updated_stats) updateStatsUI(data.updated_stats);
                 } else {
-                    alert(`Audio Analysis Error: ${data.message || 'Scan failed.'}`);
+                    showScanError(data.message || 'Audio scan failed.', res.status === 429 ? 'quota' : (res.status === 400 ? 'validation' : 'error'));
                     setLoading(false);
                 }
             } catch (err) {
                 console.error(err);
-                alert('Network error during audio forensic scan.');
+                showScanError('Network error during audio forensic scan.', 'error');
                 setLoading(false);
             }
         });
@@ -506,12 +558,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderResult(data.analysis);
                     if (data.updated_stats) updateStatsUI(data.updated_stats);
                 } else {
-                    alert(`Video Analysis Error: ${data.message || 'Scan failed.'}`);
+                    showScanError(data.message || 'Video scan failed.', res.status === 429 ? 'quota' : (res.status === 400 ? 'validation' : 'error'));
                     setLoading(false);
                 }
             } catch (err) {
                 console.error(err);
-                alert('Network error during video forensic scan.');
+                showScanError('Network error during video forensic scan.', 'error');
                 setLoading(false);
             }
         });
@@ -820,6 +872,9 @@ document.addEventListener('DOMContentLoaded', () => {
             resultClassification.textContent = report.classification || report.threat_classification || (isThreat ? 'Threat' : 'Clean');
             resultClassification.className = `metric-highlight ${isThreat ? 'threat-text' : 'safe-text'}`;
         }
+        if (resultThreatCategory) {
+            resultThreatCategory.textContent = report.threat_category || (isThreat ? 'Suspicious Vector' : 'Clean / Benign');
+        }
         if (resultConfidence) {
             resultConfidence.textContent = `${score}%`;
         }
@@ -942,7 +997,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Render Explainability Reasons
         if (reasonsList) {
             reasonsList.innerHTML = '';
-            const reasons = report.reasons || report.detection_reasons || [];
+            let reasons = report.why_flagged || report.reasons || report.detection_reasons || [];
+            if (typeof reasons === 'string') reasons = [reasons];
             if (reasons.length > 0) {
                 reasons.forEach(r => {
                     const li = document.createElement('li');
@@ -1043,11 +1099,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderBulkResults(data);
                 if (data.updated_stats) updateStatsUI(data.updated_stats);
             } else {
-                alert(`Batch Scan Error: ${data.message || 'Failed to parse file.'}`);
+                showScanError(data.message || 'Failed to parse file.', res.status === 429 ? 'quota' : (res.status === 400 ? 'validation' : 'error'));
             }
         } catch (err) {
             console.error('File scan failed:', err);
-            alert('Network error while processing chat transcript.');
+            showScanError('Network error while processing chat transcript.', 'error');
         } finally {
             setLoading(false);
         }
@@ -1322,9 +1378,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         scanDetailBody.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:20px; padding-bottom:14px; border-bottom:1px solid var(--border-color);">
-                <div style="display:flex; align-items:center; gap:10px;">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                     <span class="modality-badge-indicator modality-badge-${(s.modality || 'text').toLowerCase()}">${mod}</span>
                     <span class="status-badge ${badgeClass}" style="font-size:0.95rem; padding:6px 14px;">${escapeHTML(s.threat_classification || s.classification)}</span>
+                    <span class="panel-badge" style="background:var(--bg-subtle); border:1px solid var(--border-color); color:var(--text-secondary); font-size:0.75rem;">${escapeHTML(s.threat_category || 'General Assessment')}</span>
                 </div>
                 <div style="display:flex; gap:16px; align-items:center;">
                     <span class="risk-badge risk-${(s.risk_level || 'low').toLowerCase()}">Risk: ${escapeHTML(s.risk_level)}</span>

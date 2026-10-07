@@ -123,6 +123,7 @@ def generate_pdf_report(scan_data: Dict[str, Any], analyst_name: str = "Security
     timestamp = scan_data.get('created_at') or scan_data.get('timestamp') or datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
     modality = (scan_data.get('modality') or 'Text').upper()
     classification = scan_data.get('threat_classification') or scan_data.get('classification') or 'Unknown'
+    threat_category = scan_data.get('threat_category') or scan_data.get('threat_classification') or scan_data.get('classification') or 'General Threat'
     risk_level = (scan_data.get('risk_level') or 'LOW').upper()
     risk_score = scan_data.get('risk_score', scan_data.get('confidence', 0))
     action = scan_data.get('recommended_action', 'Maintain standard defensive posture.')
@@ -169,8 +170,8 @@ def generate_pdf_report(scan_data: Dict[str, Any], analyst_name: str = "Security
         [
             Paragraph("<b>Assigned Analyst</b>", meta_label),
             Paragraph(str(analyst_name), meta_val),
-            Paragraph("<b>Threat Classification</b>", meta_label),
-            Paragraph(f"<b>{classification}</b>", meta_val)
+            Paragraph("<b>Threat Category</b>", meta_label),
+            Paragraph(f"<b>{threat_category}</b>", meta_val)
         ],
         [
             Paragraph("<b>Assessed Risk Level</b>", meta_label),
@@ -271,7 +272,7 @@ def generate_pdf_report(scan_data: Dict[str, Any], analyst_name: str = "Security
     # -------------------------------------------------------------------------
     reasons = scan_data.get('detection_reasons') or scan_data.get('reasons') or []
     if reasons:
-        story.append(Paragraph("3. Detection Reasons & Machine Learning Insights", section_heading))
+        story.append(Paragraph("3. Why Flagged: Detection Reasons & Algorithmic Insights", section_heading))
         r_rows = []
         for r in reasons:
             r_rows.append([Paragraph("•", ParagraphStyle('Bullet', parent=body_style, textColor=CYAN, fontSize=11)),

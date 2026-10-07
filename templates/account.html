@@ -114,20 +114,92 @@
                     <span class="profile-value" style="font-size:0.9rem;">{{ current_user.email }}</span>
                 </div>
                 <div class="profile-stat-box">
+                    <span class="profile-label">Full Name</span>
+                    <span class="profile-value">{{ current_user.full_name or current_user.username }}</span>
+                </div>
+                <div class="profile-stat-box">
                     <span class="profile-label">Role Classification</span>
                     <span class="profile-value" style="color:var(--cyan);">{{ current_user.role or 'Security Analyst' }}</span>
+                </div>
+                <div class="profile-stat-box">
+                    <span class="profile-label">Active Subscription Tier</span>
+                    <span class="profile-value" style="text-transform: uppercase; color: var(--primary);">{{ (current_user.plan or 'free') }} Tier</span>
                 </div>
                 <div class="profile-stat-box">
                     <span class="profile-label">Member Since</span>
                     <span class="profile-value">{{ current_user.created_at[:10] }}</span>
                 </div>
                 <div class="profile-stat-box">
-                    <span class="profile-label">Total Messages & Media Scanned</span>
+                    <span class="profile-label">Total Assets Scanned</span>
                     <span class="profile-value">{{ user_stats.total_scanned if user_stats else 0 }}</span>
                 </div>
                 <div class="profile-stat-box">
                     <span class="profile-label">Threats Quarantined</span>
                     <span class="profile-value" style="color:var(--red-threat);">{{ user_stats.threats_detected if user_stats else 0 }}</span>
+                </div>
+            </div>
+
+            <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 14px; color: var(--text-primary);">Update Profile Details</h3>
+                <form action="{{ url_for('update_profile') }}" method="POST" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; align-items: flex-end;">
+                    <div class="form-group">
+                        <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; display: block;">Full Name</label>
+                        <input type="text" name="full_name" class="cyber-input" value="{{ current_user.full_name or '' }}" placeholder="e.g. John Doe" maxlength="150">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; display: block;">Analyst Role / Department</label>
+                        <input type="text" name="role" class="cyber-input" value="{{ current_user.role or 'Security Analyst' }}" placeholder="e.g. Incident Response Lead" maxlength="50">
+                    </div>
+                    <div>
+                        <button type="submit" class="btn-primary" style="padding: 9px 20px; font-size: 0.88rem;">Save Profile</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 2. Subscription Plan & Usage Limits -->
+        <div class="account-section">
+            <h2>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+                Subscription Plan &amp; Daily Scan Usage
+            </h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                <div style="background: var(--bg-hover); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 22px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <span style="font-size: 0.82rem; font-family: var(--font-mono); text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Active Plan</span>
+                        <span style="background: #e0f2fe; color: #0284c7; padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase;">{{ (plan_usage.plan if plan_usage else 'free') }} Tier</span>
+                    </div>
+                    <div style="font-size: 1.4rem; font-weight: 800; color: var(--text-primary); margin-bottom: 6px;">
+                        {{ plan_usage.scans_today if plan_usage else 0 }} / {{ plan_usage.daily_limit if plan_usage else 50 }}
+                        <span style="font-size: 0.85rem; font-weight: 500; color: var(--text-muted);">scans used today</span>
+                    </div>
+                    
+                    {% set percent = ((plan_usage.scans_today / plan_usage.daily_limit) * 100) if (plan_usage and plan_usage.daily_limit > 0) else 0 %}
+                    <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin: 12px 0;">
+                        <div style="width: {{ [percent, 100]|min }}%; height: 100%; background: {% if percent >= 90 %}var(--red-threat){% else %}var(--primary){% endif %}; transition: width 0.3s ease;"></div>
+                    </div>
+                    <p style="font-size: 0.82rem; color: var(--text-secondary); margin: 0;">
+                        <strong>{{ plan_usage.remaining_today if plan_usage else 50 }}</strong> scans remaining before daily midnight UTC reset.
+                    </p>
+                </div>
+
+                <div style="background: #ffffff; border: 1px dashed var(--primary); border-radius: var(--radius-md); padding: 22px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-weight: 800; color: var(--text-primary); font-size: 1.05rem;">Pro Tier (Future Upgrade)</span>
+                            <span style="background: #fef3c7; color: #b45309; padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 700;">Coming Soon</span>
+                        </div>
+                        <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.5;">
+                            Prepared architecture for enterprise workflows: Up to 5,000 scans/day, priority forensic queues, extended 365-day retention, and direct API access.
+                        </p>
+                    </div>
+                    <div>
+                        <button type="button" class="btn-secondary" style="width: 100%; font-size: 0.85rem; padding: 8px; cursor: default; opacity: 0.8;" disabled>
+                            💳 Payment Gateway Coming Soon
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -256,5 +328,14 @@
             </div>
         </div>
     </div>
+
+    <footer class="footer">
+        <p>&copy; 2026 <strong>SecureSync – Multi Detection System</strong>. Enterprise Threat Defense &amp; Media Intelligence. All rights reserved.</p>
+        <p class="disclaimer-text">
+            <a href="{{ url_for('privacy') }}" style="color: var(--primary); text-decoration: none;">Privacy Policy</a> • 
+            <a href="{{ url_for('terms') }}" style="color: var(--primary); text-decoration: none;">Terms of Service</a> • 
+            Multi-tenant data isolation with PBKDF2:SHA-256 credentials.
+        </p>
+    </footer>
 </body>
 </html>
