@@ -6,67 +6,67 @@
 
 :root {
     /* Background Canvas & Surfaces */
-    --bg-main: #f8fafc;
+    --bg-main: #f9fafb;
     --bg-card: #ffffff;
-    --bg-card-hover: #fbfcfe;
+    --bg-card-hover: #ffffff;
     --bg-card-header: #ffffff;
-    --bg-subtle: #f1f5f9;
+    --bg-subtle: #f3f4f6;
     --bg-input: #ffffff;
     --bg-input-focus: #ffffff;
 
-    /* Borders */
-    --border-color: #e2e8f0;
-    --border-subtle: #edf2f7;
-    --border-accent: #cbd5e1;
+    /* Borders: Minimal & Crisp */
+    --border-color: #e5e7eb;
+    --border-subtle: #f3f4f6;
+    --border-accent: #d1d5db;
     --border-focus: #2563eb;
 
-    /* Commercial Primary Brand (Royal Indigo / Enterprise Blue) */
+    /* Single Professional Accent Color: Clean Tech Blue */
     --primary: #2563eb;
     --primary-hover: #1d4ed8;
     --primary-light: #eff6ff;
     --primary-border: #bfdbfe;
     --cyan: #2563eb;
-    --cyan-glow: rgba(37, 99, 235, 0.15);
+    --cyan-glow: transparent;
 
-    /* Threat Status: Clean Crimson / Red (Non-Neon) */
+    /* Threat Status: Clean, subtle, muted background tints */
     --red-threat: #dc2626;
     --red-bg: #fef2f2;
-    --red-border: #fecaca;
-    --red-glow: rgba(220, 38, 38, 0.12);
+    --red-border: #fee2e2;
+    --red-glow: transparent;
 
-    /* Safe / Verified: Clean Emerald (Non-Neon) */
+    /* Safe / Verified: Clean Emerald */
     --green-safe: #16a34a;
     --green-bg: #f0fdf4;
-    --green-border: #bbf7d0;
-    --green-glow: rgba(22, 163, 74, 0.12);
+    --green-border: #dcfce7;
+    --green-glow: transparent;
 
     /* Warning / Suspicious: Clean Warm Amber */
     --amber-warn: #d97706;
     --amber-bg: #fffbeb;
-    --amber-border: #fde68a;
-    --amber-glow: rgba(217, 119, 6, 0.12);
+    --amber-border: #fef3c7;
+    --amber-glow: transparent;
 
     /* Typography Hierarchy */
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-muted: #64748b;
-    --text-light: #94a3b8;
+    --text-primary: #111827;
+    --text-secondary: #4b5563;
+    --text-muted: #6b7280;
+    --text-light: #9ca3af;
     --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-mono: 'JetBrains Mono', 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
 
-    /* Elevation & Shadows */
-    --shadow-xs: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
-    --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.07), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
-    --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
-    --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.07), 0 4px 6px -4px rgba(15, 23, 42, 0.03);
-    --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.03);
+    /* Elevation & Shadows: extremely subtle, modern, flat-leaning */
+    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -2px rgba(0, 0, 0, 0.02);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -4px rgba(0, 0, 0, 0.02);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
 
     /* Geometry & Timing */
     --radius-sm: 6px;
-    --radius-md: 10px;
-    --radius-lg: 14px;
-    --radius-xl: 20px;
-    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --transition: all 0.15s ease-in-out;
 }
 
 /* --------------------------------------------------------------------------
@@ -95,19 +95,10 @@ body {
     overflow-x: hidden;
 }
 
-/* Clean background subtle pattern */
+/* Flat, minimal canvas (no glowing background grids) */
 .subtle-bg-pattern,
 .cyber-grid-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image: 
-        radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.03) 0px, transparent 50%),
-        radial-gradient(at 100% 0%, rgba(14, 165, 233, 0.03) 0px, transparent 50%);
-    pointer-events: none;
-    z-index: 0;
+    display: none;
 }
 
 a {
@@ -196,30 +187,22 @@ a:hover {
     display: flex;
     align-items: center;
     gap: 8px;
-    background: var(--green-bg);
-    border: 1px solid var(--green-border);
+    background: #ffffff;
+    border: 1px solid var(--border-color);
     padding: 5px 12px;
     border-radius: 9999px;
-    font-size: 0.73rem;
+    font-size: 0.76rem;
     font-family: var(--font-mono);
-    color: var(--green-safe);
-    font-weight: 700;
-    letter-spacing: 0.3px;
+    color: var(--text-secondary);
+    font-weight: 500;
     box-shadow: var(--shadow-xs);
 }
 
 .pulse-indicator {
-    width: 7px;
-    height: 7px;
+    width: 6px;
+    height: 6px;
     background-color: var(--green-safe);
     border-radius: 50%;
-    box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.2);
-    animation: pulse-dot 2s infinite ease-in-out;
-}
-
-@keyframes pulse-dot {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.2); opacity: 0.7; }
 }
 
 .dashboard-nav-links {
@@ -382,9 +365,9 @@ a:hover {
    Welcome Hero
    -------------------------------------------------------------------------- */
 .welcome-hero {
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    background: #ffffff;
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-md);
     padding: 24px 28px;
     margin-bottom: 24px;
     display: flex;
@@ -392,7 +375,7 @@ a:hover {
     align-items: center;
     flex-wrap: wrap;
     gap: 18px;
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow-xs);
 }
 
 .welcome-hero h1 {
@@ -733,15 +716,15 @@ a:hover {
     color: #ffffff;
     border: 1px solid var(--primary);
     border-radius: var(--radius-md);
-    padding: 12px 22px;
-    font-size: 0.92rem;
-    font-weight: 700;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+    box-shadow: var(--shadow-xs);
     transition: var(--transition);
     font-family: inherit;
     text-decoration: none;
@@ -750,8 +733,7 @@ a:hover {
 .btn-primary:hover:not(:disabled) {
     background: var(--primary-hover);
     border-color: var(--primary-hover);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
-    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
     color: #ffffff;
 }
 
@@ -944,29 +926,22 @@ a:hover {
 }
 
 .radar-scan {
-    width: 64px;
-    height: 64px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
-    border: 2px solid var(--border-accent);
-    position: relative;
-    margin-bottom: 20px;
-    background: radial-gradient(circle, var(--primary-light) 0%, transparent 70%);
+    border: 1px solid var(--border-color);
+    margin-bottom: 16px;
+    background: var(--bg-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .radar-sweep {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 50%;
-    height: 2px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
     background: var(--primary);
-    transform-origin: 0 0;
-    animation: radar-sweep-anim 3s linear infinite;
-}
-
-@keyframes radar-sweep-anim {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
 }
 
 .state-container h3 {
@@ -985,13 +960,13 @@ a:hover {
 
 /* Loading Radar State */
 .radar-spinner {
-    width: 54px;
-    height: 54px;
-    border: 3px solid var(--border-color);
+    width: 36px;
+    height: 36px;
+    border: 2px solid var(--border-color);
     border-top-color: var(--primary);
     border-radius: 50%;
-    animation: spin 0.9s linear infinite;
-    margin-bottom: 18px;
+    animation: spin 0.75s linear infinite;
+    margin-bottom: 16px;
 }
 
 @keyframes spin {
@@ -1438,8 +1413,8 @@ a:hover {
 .btn-download-pdf {
     background: var(--primary);
     color: #ffffff;
-    font-weight: 700;
-    padding: 11px 20px;
+    font-weight: 600;
+    padding: 10px 20px;
     border-radius: var(--radius-md);
     border: 1px solid var(--primary);
     cursor: pointer;
@@ -1447,7 +1422,7 @@ a:hover {
     align-items: center;
     gap: 8px;
     font-size: 0.9rem;
-    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+    box-shadow: var(--shadow-xs);
     transition: var(--transition);
     font-family: inherit;
     text-decoration: none;
@@ -1456,8 +1431,7 @@ a:hover {
 .btn-download-pdf:hover {
     background: var(--primary-hover);
     border-color: var(--primary-hover);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+    box-shadow: var(--shadow-sm);
     color: #ffffff;
 }
 

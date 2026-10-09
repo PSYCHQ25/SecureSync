@@ -87,15 +87,15 @@
     </header>
 
     <main class="dashboard-wrapper">
-        <!-- Prominent User Welcome Banner -->
+        <!-- Clean Workspace Header -->
         <section class="welcome-hero">
             <div>
-                <h1>Welcome, {{ current_user.username }}</h1>
-                <p>Enterprise Multi-Modal Threat Detection Console. Inspect suspicious communications, images, deepfake audio, and synthetic video in real-time with zero data leakage.</p>
+                <h1>Detection Workspace</h1>
+                <p>Analyze suspicious content across text, image, audio, and video with in-memory forensic precision.</p>
             </div>
             <div class="nav-status">
                 <span class="pulse-indicator"></span>
-                <span class="status-label">MULTI-MODAL ZERO-TRUST ENGINE ONLINE</span>
+                <span class="status-label">In-Memory Analysis</span>
             </div>
         </section>
 
@@ -103,7 +103,7 @@
         <section class="stats-grid">
             <div class="stat-card">
                 <div class="stat-icon icon-total">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                     </svg>
                 </div>
@@ -115,27 +115,27 @@
 
             <div class="stat-card">
                 <div class="stat-icon icon-scam">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                         <line x1="12" y1="9" x2="12" y2="13"/>
                         <line x1="12" y1="17" x2="12.01" y2="17"/>
                     </svg>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-label">Suspicious Threats Detected</span>
+                    <span class="stat-label">Threats Detected</span>
                     <span class="stat-value threat-text" id="stat-scam">0</span>
                 </div>
             </div>
 
             <div class="stat-card">
                 <div class="stat-icon icon-legit">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                         <polyline points="22 4 12 14.01 9 11.01"/>
                     </svg>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-label">Verified Clean Assets</span>
+                    <span class="stat-label">Verified Clean</span>
                     <span class="stat-value safe-text" id="stat-legit">0</span>
                 </div>
             </div>
@@ -147,7 +147,7 @@
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 </svg>
-                📝 Text Detection
+                Text Analysis
             </button>
             <button type="button" class="tab-btn" id="tab-btn-image" data-mode="image">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -155,7 +155,7 @@
                     <circle cx="8.5" cy="8.5" r="1.5"/>
                     <polyline points="21 15 16 10 5 21"/>
                 </svg>
-                🖼️ Image Detection
+                Image Forensics
             </button>
             <button type="button" class="tab-btn" id="tab-btn-audio" data-mode="audio">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -164,14 +164,14 @@
                     <line x1="12" y1="19" x2="12" y2="23"/>
                     <line x1="8" y1="23" x2="16" y2="23"/>
                 </svg>
-                🎙️ Audio Detection
+                Audio Forensics
             </button>
             <button type="button" class="tab-btn" id="tab-btn-video" data-mode="video">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                     <polygon points="23 7 16 12 23 17 23 7"/>
                     <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
                 </svg>
-                🎥 Video Detection
+                Video Forensics
             </button>
         </div>
 
@@ -490,7 +490,7 @@
                     <!-- Recommended Action Directive Box -->
                     <div class="recommended-action-box" id="recommended-action-box">
                         <div class="action-heading">
-                            <span>🛡️ Defensive Action Protocol</span>
+                            <span>Recommended Action</span>
                         </div>
                         <p class="action-text" id="recommended-action-text">--</p>
                     </div>

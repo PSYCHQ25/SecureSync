@@ -3,274 +3,403 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="SecureSync – Multi Detection System. Enterprise-grade threat intelligence and forensic detection for Text, Image, Audio, and Video. Protect against smishing, quishing, deepfake audio, and synthetic media.">
-    <title>SecureSync – Multi Detection System | Cyber Threat Intelligence</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3.0">
+    <meta name="description" content="SecureSync – Analyze suspicious content across text, image, audio, and video with forensic precision, in-memory privacy, and actionable threat reports.">
+    <title>SecureSync – Multi Detection System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        .section-wrap {
-            max-width: 1240px;
-            margin: 0 auto 70px;
-            padding: 0 24px;
+        .home-container {
+            max-width: 1160px;
+            margin: 0 auto;
+            padding: 0 28px;
         }
-        .section-badge {
-            display: inline-block;
-            font-size: 0.76rem;
-            font-family: var(--font-mono);
+        .hero-section {
+            padding: 96px 0 64px;
+            text-align: center;
+            max-width: 860px;
+            margin: 0 auto;
+        }
+        .hero-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 999px;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-bottom: 28px;
+            box-shadow: var(--shadow-xs);
+        }
+        .hero-pill-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--primary);
+        }
+        .hero-title {
+            font-size: 3.25rem;
+            line-height: 1.15;
             font-weight: 700;
-            color: var(--primary);
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-            margin-bottom: 6px;
-        }
-        .section-heading h2 {
-            font-size: 2.2rem;
-            font-weight: 800;
             color: var(--text-primary);
-            letter-spacing: -0.6px;
+            letter-spacing: -1.2px;
+            margin-bottom: 20px;
+        }
+        .hero-subtitle {
+            font-size: 1.15rem;
+            line-height: 1.65;
+            color: var(--text-secondary);
+            max-width: 680px;
+            margin: 0 auto 36px;
+            font-weight: 400;
+        }
+        .hero-actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            margin-bottom: 64px;
+        }
+        .section-header-clean {
+            text-align: center;
+            margin-bottom: 36px;
+        }
+        .section-header-clean h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.4px;
+            margin-bottom: 8px;
+        }
+        .section-header-clean p {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+        }
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 96px;
+        }
+        .option-card {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 28px 24px;
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-xs);
+        }
+        .option-card:hover {
+            border-color: var(--border-accent);
+            box-shadow: var(--shadow-sm);
+            transform: translateY(-2px);
+        }
+        .option-icon-wrap {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-subtle);
+            border: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+        .option-num {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .option-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+            letter-spacing: -0.2px;
+        }
+        .option-desc {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            flex-grow: 1;
+        }
+        .option-link {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--primary);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+        }
+        .option-link:hover {
+            color: var(--primary-hover);
+        }
+        .secondary-section {
+            border-top: 1px solid var(--border-color);
+            padding: 80px 0;
+        }
+        .secondary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 28px;
+        }
+        .secondary-card {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 28px;
+            box-shadow: var(--shadow-xs);
+        }
+        .secondary-card h3 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            letter-spacing: -0.2px;
+        }
+        .secondary-card p {
+            font-size: 0.88rem;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+        @media (max-width: 1024px) {
+            .options-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .secondary-grid {
+                grid-template-columns: 1fr;
+            }
+            .hero-title {
+                font-size: 2.6rem;
+            }
+        }
+        @media (max-width: 640px) {
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+            .hero-title {
+                font-size: 2.1rem;
+            }
+            .hero-actions {
+                flex-direction: column;
+                width: 100%;
+            }
+            .hero-actions a {
+                width: 100%;
+                text-align: center;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="subtle-bg-pattern"></div>
-
     <header class="navbar landing-nav">
         <div class="nav-container">
             <div class="brand">
-                <a href="{{ url_for('home') }}" style="display: flex; align-items: center; gap: 12px; text-decoration: none;">
+                <a href="{{ url_for('home') }}" style="display: flex; align-items: center; gap: 10px; text-decoration: none;">
                     <div class="brand-icon">
-                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                             <path d="M9 12l2 2 4-4"/>
                         </svg>
                     </div>
                     <div class="brand-text">
                         <span class="brand-title">SecureSync</span>
-                        <span class="brand-tag">Multi Detection System</span>
+                        <span class="brand-tag">Multi Detection</span>
                     </div>
                 </a>
             </div>
 
             <div class="landing-nav-links">
-                <a href="#modalities">Multi-Modal Engines</a>
-                <a href="#features">Platform Features</a>
-                <a href="{{ url_for('privacy') }}">Privacy Policy</a>
-                <a href="{{ url_for('terms') }}">Terms of Service</a>
+                <a href="#detection-options">Detection Engines</a>
+                <a href="{{ url_for('privacy') }}">Privacy</a>
+                <a href="{{ url_for('terms') }}">Terms</a>
             </div>
 
             <div class="nav-right">
-                <a href="{{ url_for('login') }}" class="btn-nav-action" style="padding: 8px 18px;">
+                {% if current_user %}
+                <a href="{{ url_for('dashboard') }}" class="btn-primary" style="padding: 8px 18px; font-size: 0.9rem;">
+                    Go to Workspace
+                </a>
+                {% else %}
+                <a href="{{ url_for('login') }}" class="btn-nav-action" style="padding: 8px 18px; font-size: 0.9rem;">
                     Sign In
                 </a>
-                <a href="{{ url_for('register') }}" class="btn-nav-action btn-primary" style="padding: 8px 18px;">
-                    Create Account
+                <a href="{{ url_for('register') }}" class="btn-primary" style="padding: 8px 18px; font-size: 0.9rem;">
+                    Get Started
                 </a>
+                {% endif %}
             </div>
         </div>
     </header>
 
-    <main>
+    <main class="home-container">
         <!-- Hero Section -->
-        <section class="hero">
-            <div class="hero-badge">
-                <span class="badge-dot"></span>
-                Next-Gen Multi-Modal Threat Defense Platform
+        <section class="hero-section">
+            <div class="hero-pill">
+                <span class="hero-pill-dot"></span>
+                Multi-Vector Forensic Workspace
             </div>
-            <h1>Commercial Cybersecurity Defense Across Text, Image, Audio &amp; Video</h1>
-            <p>
-                SecureSync is a comprehensive multi-detection cybersecurity system. Harness real-time natural language processing, visual steganography analysis, neural speech forensics, and deepfake container inspection to neutralize digital deception.
+
+            <h1 class="hero-title">Analyze suspicious content across text, image, audio and video.</h1>
+
+            <p class="hero-subtitle">
+                A minimalist, privacy-first detection workspace. Inspect messages, screenshots, voice recordings, and video clips for deception, steganography, and synthetic manipulation with verifiable evidence.
             </p>
-            <div class="hero-buttons">
+
+            <div class="hero-actions">
+                {% if current_user %}
+                <a href="{{ url_for('dashboard') }}" class="btn-primary btn-large">
+                    Open Detection Workspace
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                </a>
+                {% else %}
                 <a href="{{ url_for('register') }}" class="btn-primary btn-large">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                        <circle cx="8.5" cy="7" r="4"/>
-                        <line x1="20" y1="8" x2="20" y2="14"/>
-                        <line x1="23" y1="11" x2="17" y2="11"/>
+                    Get Started Free
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
                     </svg>
-                    Open Security Console
                 </a>
-                <a href="{{ url_for('login') }}" class="btn-large btn-outline-large">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-                        <polyline points="10 17 15 12 10 7"/>
-                        <line x1="15" y1="12" x2="3" y2="12"/>
-                    </svg>
-                    Sign In to Console
+                <a href="{{ url_for('login') }}" class="btn-secondary btn-large">
+                    Sign In
                 </a>
-            </div>
-
-            <!-- Modalities 4-Column Showcase -->
-            <div class="modalities-grid" id="modalities">
-                <div class="modality-card">
-                    <span class="modality-tag">Vector 01 • Text</span>
-                    <h3>SMS &amp; Smishing Defense</h3>
-                    <p>Dual NLP TF-IDF + Logistic Regression engine with 10 heuristic indicator rules, URL defanging, and bulk chat scanning.</p>
-                </div>
-                <div class="modality-card">
-                    <span class="modality-tag">Vector 02 • Image</span>
-                    <h3>Quishing &amp; Stego Forensics</h3>
-                    <p>Detects QR code phishing (quishing), fake banking invoice lures, trailing byte payloads past EOF, and EXIF software tampering.</p>
-                </div>
-                <div class="modality-card">
-                    <span class="modality-tag">Vector 03 • Audio</span>
-                    <h3>Deepfake Voice &amp; Vishing</h3>
-                    <p>FFT spectral roll-off analysis, neural vocoder cutoff detection, zero-crossing dynamics, and synthetic voice clone detection.</p>
-                </div>
-                <div class="modality-card">
-                    <span class="modality-tag">Vector 04 • Video</span>
-                    <h3>Synthetic Media &amp; Atoms</h3>
-                    <p>ISO BMFF container atom hierarchy verification, encoder signature detection (Roop/SadTalker), and AV sync drift audit.</p>
-                </div>
-            </div>
-
-            <!-- Live Mockup Visualizer -->
-            <div class="hero-mockup-wrapper">
-                <div class="hero-mockup">
-                    <div class="mockup-header">
-                        <div class="mockup-dots">
-                            <span class="mockup-dot red"></span>
-                            <span class="mockup-dot yellow"></span>
-                            <span class="mockup-dot green"></span>
-                        </div>
-                        <div class="mockup-tag">SECURESYNC MULTI DETECTION ENGINE • LIVE INSPECTION</div>
-                    </div>
-                    <div class="mockup-body">
-                        <div class="mockup-sample">
-                            <div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 8px;">// INCOMING FORENSIC PAYLOAD</div>
-                            <p style="margin: 0; color: var(--text-primary); font-weight: 500;">
-                                "Dear customer, your Chase checking account is locked due to suspicious activity. Verify immediately at <u>hxxp://bit[.]ly/chase-lock-sec</u> or card will be blocked."
-                            </p>
-                            <div style="margin-top: 12px; font-size: 0.78rem; color: var(--primary); font-family: var(--font-mono); font-weight: 600;">
-                                [QUARANTINED LINK: hxxp://bit[.]ly/chase-lock-sec]
-                            </div>
-                        </div>
-                        <div class="mockup-verdict">
-                            <div class="mockup-score-row">
-                                <span style="font-weight: 800; color: var(--red-threat); font-size: 0.95rem;">🚨 CRITICAL THREAT DETECTED</span>
-                                <span class="mockup-badge">RISK SCORE: 98/100</span>
-                            </div>
-                            <div style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">
-                                <strong style="color: var(--text-primary);">Indicators:</strong> Brand Spoofing (Chase), Link Shortener Disguise (bit.ly), Deceptive Security Alert.
-                            </div>
-                            <div style="font-size: 0.82rem; background: #ffffff; border: 1px solid var(--red-border); padding: 9px 12px; border-radius: var(--radius-sm); color: var(--red-threat); font-weight: 500;">
-                                🛡️ <strong>Playbook:</strong> Do NOT click the link. Block sender. Export certified PDF investigation report.
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                {% endif %}
             </div>
         </section>
 
-        <!-- Trust Statistics -->
-        <div class="trust-banner">
-            <div class="trust-stats">
-                <div class="stat-item">
-                    <h4>4</h4>
-                    <p>Detection Modalities</p>
-                </div>
-                <div class="stat-item">
-                    <h4>Real-Time</h4>
-                    <p>NLP Heuristic Analysis</p>
-                </div>
-                <div class="stat-item">
-                    <h4>Automatic</h4>
-                    <p>Link Defanging &amp; Quarantine</p>
-                </div>
-                <div class="stat-item">
-                    <h4>Instant</h4>
-                    <p>PDF Investigation Reports</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Features Grid -->
-        <section class="section-wrap" id="features">
-            <div class="section-heading" style="text-align: center; margin-bottom: 40px;">
-                <span class="section-badge">Platform Capabilities</span>
-                <h2>Comprehensive Commercial Threat Defense</h2>
-                <p style="color: var(--text-secondary); max-width: 650px; margin: 8px auto 0;">Engineered for security analysts, incident responders, and compliance officers needing dependable, multi-vector threat verification.</p>
+        <!-- 4 Detection Options (Primary Showcase) -->
+        <section id="detection-options" style="margin-bottom: 80px;">
+            <div class="section-header-clean">
+                <h2>Four Specialized Detection Engines</h2>
+                <p>Select any modality to analyze suspicious input with dedicated algorithmic checks.</p>
             </div>
 
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/>
+            <div class="options-grid">
+                <!-- 1. Text -->
+                <div class="option-card">
+                    <div class="option-icon-wrap">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                         </svg>
                     </div>
-                    <h3>Automated PDF Investigation Reports</h3>
-                    <p>Generate formal, high-resolution forensic investigation reports powered by ReportLab. Contains executive risk metrics, indicator breakdowns, quarantined links, and cryptographic timestamps.</p>
+                    <span class="option-num">Modality 01</span>
+                    <h3 class="option-title">Text Analysis</h3>
+                    <p class="option-desc">
+                        Inspects SMS, emails, and chat messages using calibrated TF-IDF machine learning, 10 heuristic indicator rules, and automatic URL quarantine.
+                    </p>
+                    <a href="{{ url_for('dashboard') if current_user else url_for('login') }}" class="option-link">
+                        Analyze text &rarr;
+                    </a>
                 </div>
 
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                        </svg>
-                    </div>
-                    <h3>Zero-Trust Link Defanging &amp; Quarantine</h3>
-                    <p>Extracted URLs are systematically neutralized (e.g. <code>hxxp://</code>) and quarantined with domain risk scoring. No suspicious hyperlink is ever fetched or executed.</p>
-                </div>
-
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
-                        </svg>
-                    </div>
-                    <h3>Multi-Tenant Data Isolation</h3>
-                    <p>PostgreSQL and SQLite storage layers enforce strict tenant boundary checks. Every scan, audit trail, and user credential is isolated with salted PBKDF2:SHA-256 protection.</p>
-                </div>
-
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                <!-- 2. Image -->
+                <div class="option-card">
+                    <div class="option-icon-wrap">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                             <circle cx="8.5" cy="8.5" r="1.5"/>
                             <polyline points="21 15 16 10 5 21"/>
                         </svg>
                     </div>
-                    <h3>Quishing &amp; Visual Steganography</h3>
-                    <p>Detects hidden QR code phish vectors in screenshots, trailing unmapped payloads past JPEG/PNG EOF markers, and editing software signatures like Photoshop or Canva.</p>
+                    <span class="option-num">Modality 02</span>
+                    <h3 class="option-title">Image Forensics</h3>
+                    <p class="option-desc">
+                        Identifies QR code phishing (quishing), fake banking invoice lures, steganographic trailing payloads past EOF, and EXIF software tampering.
+                    </p>
+                    <a href="{{ url_for('dashboard') if current_user else url_for('login') }}" class="option-link">
+                        Analyze image &rarr;
+                    </a>
                 </div>
 
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                <!-- 3. Audio -->
+                <div class="option-card">
+                    <div class="option-icon-wrap">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
                             <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                            <line x1="12" y1="19" x2="12" y2="23"/>
+                            <line x1="8" y1="23" x2="16" y2="23"/>
                         </svg>
                     </div>
-                    <h3>Deepfake Audio &amp; Vishing Analysis</h3>
-                    <p>Extracts acoustic features including FFT spectral roll-off, zero-crossing rate, dynamic range, and neural vocoder cutoff points typical of AI voice cloning models.</p>
+                    <span class="option-num">Modality 03</span>
+                    <h3 class="option-title">Audio Forensics</h3>
+                    <p class="option-desc">
+                        Examines acoustic feature sets including FFT spectral roll-off, zero-crossing dynamics, and neural vocoder cutoff markers for synthetic voice clones.
+                    </p>
+                    <a href="{{ url_for('dashboard') if current_user else url_for('login') }}" class="option-link">
+                        Analyze audio &rarr;
+                    </a>
                 </div>
 
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                <!-- 4. Video -->
+                <div class="option-card">
+                    <div class="option-icon-wrap">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
                             <polygon points="23 7 16 12 23 17 23 7"/>
                             <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
                         </svg>
                     </div>
-                    <h3>Deepfake Video &amp; Container Forensics</h3>
-                    <p>Inspects ISO BMFF atoms, encoder library signatures (Roop, SadTalker, Wav2Lip), audio-visual synchronization drift, and embedded video overlays.</p>
+                    <span class="option-num">Modality 04</span>
+                    <h3 class="option-title">Video Forensics</h3>
+                    <p class="option-desc">
+                        Audits ISO BMFF container atom hierarchy, synthetic encoder signatures (Roop, SadTalker), and audio-video synchronization discrepancies.
+                    </p>
+                    <a href="{{ url_for('dashboard') if current_user else url_for('login') }}" class="option-link">
+                        Analyze video &rarr;
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Secondary: Platform Guarantees -->
+        <section class="secondary-section">
+            <div class="section-header-clean">
+                <h2>Built for Clarity and Privacy</h2>
+                <p>Every analysis provides verifiable evidence with complete user data isolation.</p>
+            </div>
+
+            <div class="secondary-grid">
+                <div class="secondary-card">
+                    <h3>In-Memory Processing</h3>
+                    <p>Uploaded binary assets are decoded strictly within volatile memory during scanning and immediately discarded. No original file is permanently stored.</p>
+                </div>
+
+                <div class="secondary-card">
+                    <h3>Actionable Explainability</h3>
+                    <p>Every verdict includes a categorized threat type, explicit detection reasons, matched forensic indicators, and a concrete recommended action.</p>
+                </div>
+
+                <div class="secondary-card">
+                    <h3>Downloadable PDF Reports</h3>
+                    <p>Export formal forensic reports in one click with defanged URLs, timestamped findings, and complete indicator breakdowns.</p>
                 </div>
             </div>
         </section>
     </main>
 
     <footer class="footer">
-        <p>&copy; 2026 <strong>SecureSync – Multi Detection System</strong>. Enterprise Threat Defense &amp; Media Intelligence. All rights reserved.</p>
+        <p>&copy; 2026 <strong>SecureSync</strong>. Multi Detection System.</p>
         <p class="disclaimer-text">
-            <a href="{{ url_for('privacy') }}" style="color: var(--primary); text-decoration: none;">Privacy Policy</a> • 
-            <a href="{{ url_for('terms') }}" style="color: var(--primary); text-decoration: none;">Terms of Service</a> • 
-            All media and message payloads are analyzed locally with zero external data sharing. Salted PBKDF2:SHA-256 multi-tenant isolation.
+            <a href="{{ url_for('privacy') }}">Privacy Policy</a> &bull; 
+            <a href="{{ url_for('terms') }}">Terms of Service</a> &bull; 
+            Zero-trust in-memory processing. Salted PBKDF2:SHA-256 tenant data isolation.
         </p>
     </footer>
 </body>
