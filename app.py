@@ -210,10 +210,10 @@ PRESET_SAMPLES = [
     },
     {
         "id": "wa_family",
-        "category": "WhatsApp Impersonation",
+        "category": "Family Impersonation Scam",
         "label": "Scam",
         "title": "Hi Mom Fake Emergency",
-        "message": "Hi Mom, my phone fell in the water and this is my temporary WhatsApp number. My bank app is not working and I urgently need $450 to pay for car towing. Can you send it via Zelle right now?"
+        "message": "Hi Mom, my phone fell in the water and this is my temporary number. My bank app is not working and I urgently need $450 to pay for car towing. Can you send it via Zelle right now?"
     },
     {
         "id": "fake_lottery",
@@ -1067,7 +1067,7 @@ def scan_message():
     if not raw_text:
         return jsonify({
             "status": "error",
-            "message": "Message cannot be empty. Please enter an email, SMS, or WhatsApp message."
+            "message": "Message cannot be empty. Please enter an email, SMS, or message transcript."
         }), 400
 
     if len(raw_text) > 8000:

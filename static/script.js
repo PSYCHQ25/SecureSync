@@ -314,7 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function scanTextMessage() {
         const text = messageInput.value.trim();
         if (!text) {
-            alert('Please paste or type an SMS, email, or WhatsApp message to inspect.');
+            alert('Please paste or type an SMS, email, or message transcript to inspect.');
             messageInput.focus();
             return;
         }
