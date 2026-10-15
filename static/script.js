@@ -122,19 +122,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let icon = '⚠️';
         let title = 'Scan Error';
-        let bgColor = 'var(--red-threat, #ff3366)';
+        let bgColor = 'var(--charcoal-black, #0e1116)';
 
         if (errorType === 'quota') {
             icon = '🔒';
             title = 'Daily Scan Limit Reached';
-            bgColor = '#f59e0b';
+            bgColor = 'var(--amber-warn, #b45309)';
         } else if (errorType === 'validation') {
             icon = '📄';
             title = 'Invalid File';
-            bgColor = '#ef4444';
+            bgColor = 'var(--red-threat, #c5221f)';
         } else if (errorType === 'auth') {
             icon = '🔑';
             title = 'Authentication Required';
+            bgColor = 'var(--primary, #0062ff)';
         }
 
         toast.style.cssText = `
