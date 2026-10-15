@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="SecureSync – Analyze suspicious content across text, image, audio, and video with forensic precision, in-memory privacy, and actionable threat reports.">
     <title>SecureSync – Multi Detection System</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=4.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=5.0">
+    <script src="{{ url_for('static', filename='theme.js') }}?v=5.0"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -26,7 +27,7 @@
             align-items: center;
             gap: 8px;
             padding: 5px 12px;
-            background: #ffffff;
+            background: var(--bg-card);
             border: 1px solid var(--border-color);
             border-radius: 999px;
             font-size: 0.8rem;
@@ -86,7 +87,7 @@
             margin-bottom: 88px;
         }
         .option-card {
-            background: #ffffff;
+            background: var(--bg-card);
             border: 1px solid var(--border-color);
             border-radius: var(--radius-md);
             padding: 28px 22px;
@@ -157,7 +158,7 @@
             gap: 24px;
         }
         .secondary-card {
-            background: #ffffff;
+            background: var(--bg-card);
             border: 1px solid var(--border-color);
             border-radius: var(--radius-md);
             padding: 24px;
