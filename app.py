@@ -74,13 +74,15 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 # Secret key for cryptographically signed session cookies
 app.secret_key = os.environ.get('SECRET_KEY', 'securesync_cyber_defense_secret_key_8849201948')
 
-# Security Session Cookie Configuration
+# Security Session Cookie & Cache Configuration
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
     SESSION_COOKIE_SECURE=os.environ.get('SECURE_COOKIES', 'False').lower() in ('true', '1') or os.environ.get('RENDER') is not None,
     PERMANENT_SESSION_LIFETIME=timedelta(hours=12),
-    MAX_CONTENT_LENGTH=50 * 1024 * 1024
+    MAX_CONTENT_LENGTH=50 * 1024 * 1024,
+    SEND_FILE_MAX_AGE_DEFAULT=0,
+    TEMPLATES_AUTO_RELOAD=True
 )
 
 # Initialize database schema permanently (never wiping on startup)
@@ -1402,6 +1404,10 @@ def add_security_headers(response):
         "img-src 'self' data: https:; "
         "connect-src 'self';"
     )
+    if request.path.startswith('/static/'):
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
     if request.is_secure or request.headers.get('X-Forwarded-Proto') == 'https':
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     return response

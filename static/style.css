@@ -11,20 +11,20 @@
        1. Sophisticated Palette Tokens
        ---------------------------------------------------------------------- */
     /* Warm White Canvas & Layered Surfaces */
-    --bg-main: #fbfbfa;
+    --bg-main: #f8f8f5;
     --bg-card: #ffffff;
-    --bg-surface: #f7f7f5;
+    --bg-surface: #f0f1ec;
     --bg-surface-elevated: #ffffff;
-    --bg-subtle: #f4f4f1;
+    --bg-subtle: #e9eae4;
     --bg-input: #ffffff;
-    --bg-hover: #f1f1ee;
+    --bg-hover: #eceee8;
 
     /* Delicate Borders */
-    --border-color: #e5e6e3;
-    --border-subtle: #eceee9;
+    --border-color: #dfdfd8;
+    --border-subtle: #e9eae4;
     --border-focus: #0062ff;
-    --border-strong: #d2d4cf;
-    --border-accent: #d2d4cf;
+    --border-strong: #c7c9c1;
+    --border-accent: #c7c9c1;
     --font-body: var(--font-main);
     --font-heading: var(--font-main);
     --bg-card-hover: #ffffff;
