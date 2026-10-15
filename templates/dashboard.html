@@ -654,15 +654,20 @@
 
     <!-- Scan Detail Modal -->
     <div class="modal-overlay hidden" id="scan-detail-modal">
-        <div class="modal-card card" style="max-width: 840px;">
+        <div class="modal-card card" style="max-width: 860px; max-height: 90vh; display: flex; flex-direction: column;">
             <div class="modal-header">
                 <div class="panel-title-wrap">
-                    <span class="panel-badge">FORENSIC AUDIT REPORT</span>
-                    <h3 id="modal-scan-id-title">Scan Details</h3>
+                    <span class="panel-badge">FORENSIC INTELLIGENCE REPORT</span>
+                    <h3 id="modal-scan-id-title">Forensic Intelligence Audit</h3>
                 </div>
-                <button type="button" class="btn-modal-close" id="btn-close-scan-detail">&times;</button>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <button type="button" class="btn-secondary" id="btn-print-scan-detail" title="Print Forensic Report" style="padding:5px 12px; font-size:0.8rem; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+                        🖨️ Print Report
+                    </button>
+                    <button type="button" class="btn-modal-close" id="btn-close-scan-detail">&times;</button>
+                </div>
             </div>
-            <div class="modal-body" id="scan-detail-body" style="padding: 24px;">
+            <div class="modal-body" id="scan-detail-body" style="padding: 24px; overflow-y: auto;">
                 <!-- Filled dynamically by script.js -->
             </div>
         </div>

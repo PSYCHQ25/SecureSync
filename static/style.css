@@ -2463,3 +2463,302 @@ input:checked + .slider:before {
     margin-right: auto;
     line-height: 1.5;
 }
+
+/* ==========================================================================
+   Forensic Intelligence Report Styling
+   Refined Ivory, Graphite & Cobalt-Blue design with accessible indicators
+   ========================================================================== */
+.forensic-report-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    font-family: var(--font-main);
+    color: var(--text-primary);
+}
+
+.forensic-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding-bottom: 16px;
+    border-bottom: 1.5px solid var(--border-color);
+}
+
+.forensic-assessment-card {
+    border-radius: var(--radius-md);
+    padding: 18px 20px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.forensic-assessment-card.threat {
+    background: var(--red-bg);
+    border-color: var(--red-border);
+}
+
+.forensic-assessment-card.clean {
+    background: var(--green-bg);
+    border-color: var(--green-border);
+}
+
+.forensic-assessment-card.warning {
+    background: var(--amber-bg);
+    border-color: var(--amber-border);
+}
+
+.forensic-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+}
+
+.forensic-stat-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.forensic-stat-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
+}
+
+.forensic-stat-value {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.forensic-assessment-summary {
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    padding-top: 10px;
+}
+
+[data-theme="dark"] .forensic-assessment-summary {
+    border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Metadata Grid */
+.forensic-meta-table {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+}
+
+.forensic-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.forensic-meta-item .meta-k {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.forensic-meta-item .meta-v {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    word-break: break-all;
+}
+
+.forensic-section-title {
+    font-size: 0.76rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.forensic-section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-color);
+}
+
+/* Timeline */
+.forensic-timeline {
+    position: relative;
+    padding-left: 24px;
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.forensic-timeline::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    left: 8px;
+    width: 2px;
+    background: var(--border-strong);
+}
+
+.timeline-step {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.timeline-step::before {
+    content: '';
+    position: absolute;
+    left: -20px;
+    top: 4px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: 2px solid var(--bg-card);
+    box-shadow: 0 0 0 2px var(--primary-border);
+}
+
+.timeline-step-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.timeline-step-phase {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.timeline-step-time {
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+}
+
+.timeline-step-detail {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+}
+
+/* Directive & Actions */
+.forensic-directive-card {
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    border: 1px solid var(--primary-border);
+    background: var(--primary-light);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.forensic-directive-card.threat {
+    background: var(--red-bg);
+    border-color: var(--red-border);
+}
+
+.forensic-directive-card.clean {
+    background: var(--green-bg);
+    border-color: var(--green-border);
+}
+
+.forensic-directive-title {
+    font-size: 0.76rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.forensic-directive-content {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.forensic-next-actions {
+    list-style: none;
+    padding: 0;
+    margin: 6px 0 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.forensic-next-actions li {
+    font-size: 0.83rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    line-height: 1.4;
+}
+
+.forensic-next-actions li::before {
+    content: '→';
+    color: var(--primary);
+    font-weight: 700;
+}
+
+/* Print Stylesheet */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #scan-detail-modal,
+    #scan-detail-modal * {
+        visibility: visible;
+    }
+    #scan-detail-modal {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: #ffffff !important;
+        color: #0c0e12 !important;
+        padding: 0;
+        margin: 0;
+        z-index: 999999;
+        display: block !important;
+    }
+    .modal-card {
+        box-shadow: none !important;
+        border: none !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+    }
+    .btn-modal-close,
+    #btn-print-scan-detail,
+    .modal-footer-actions,
+    .app-header,
+    .footer,
+    nav {
+        display: none !important;
+    }
+}
+

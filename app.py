@@ -1072,10 +1072,10 @@ def scan_message():
             "message": "Message cannot be empty. Please enter an email, SMS, or message transcript."
         }), 400
 
-    if len(raw_text) > 8000:
+    if len(raw_text) > 50000:
         return jsonify({
             "status": "error",
-            "message": "Message exceeds maximum permitted length (8,000 characters)."
+            "message": "Message exceeds maximum permitted length (50,000 characters)."
         }), 400
 
     try:
@@ -1173,17 +1173,123 @@ def scan_file():
     if not filename:
         return jsonify({"status": "error", "message": "Empty filename provided."}), 400
 
-    allowed_exts = ('.txt', '.csv')
+    allowed_exts = ('.txt', '.csv', '.pdf')
     if not any(filename.lower().endswith(ext) for ext in allowed_exts):
-        return jsonify({"status": "error", "message": "Unsupported file format. Please upload a WhatsApp chat export (.txt) or CSV spreadsheet (.csv)."}), 400
+        return jsonify({"status": "error", "message": "Unsupported file format. Please upload a Document (.pdf, .txt), WhatsApp chat export (.txt), or CSV spreadsheet (.csv)."}), 400
 
     try:
         raw_bytes = file.read()
         if not raw_bytes:
             return jsonify({"status": "error", "message": "Uploaded file is empty (0 bytes)."}), 400
 
-        if len(raw_bytes) > 10 * 1024 * 1024:
-            return jsonify({"status": "error", "message": "File exceeds maximum size limit (10 MB)."}), 400
+        if len(raw_bytes) > 15 * 1024 * 1024:
+            return jsonify({"status": "error", "message": "File exceeds maximum size limit (15 MB)."}), 400
+
+        # ---------------------------------------------------------------------
+        # 1. PDF Document Upload & Text Extraction Pipeline
+        # ---------------------------------------------------------------------
+        if filename.lower().endswith('.pdf'):
+            import hashlib
+            from multimodal_detector import calculate_entropy
+            try:
+                import pypdf
+                HAS_PYPDF = True
+            except ImportError:
+                HAS_PYPDF = False
+
+            if not HAS_PYPDF:
+                return jsonify({"status": "error", "message": "PDF parsing engine (pypdf) is not installed on server."}), 500
+
+            file_hash = hashlib.sha256(raw_bytes).hexdigest()
+            entropy = calculate_entropy(raw_bytes)
+
+            # PDF structural security check (distinguishing malware/file-security from scam)
+            raw_str = raw_bytes.decode('latin-1', errors='ignore')
+            file_security_notes = []
+            if '/JavaScript' in raw_str or '/JS' in raw_str:
+                file_security_notes.append("Active PDF JavaScript (/JavaScript or /JS) dictionary element detected.")
+            if '/Launch' in raw_str:
+                file_security_notes.append("External execution action (/Launch) dictionary detected.")
+            if '/OpenAction' in raw_str:
+                file_security_notes.append("Automatic trigger action (/OpenAction) detected.")
+            if '/EmbeddedFiles' in raw_str:
+                file_security_notes.append("Embedded file payload (/EmbeddedFiles) detected.")
+
+            try:
+                pdf_reader = pypdf.PdfReader(io.BytesIO(raw_bytes))
+                num_pages = len(pdf_reader.pages)
+                extracted_pages = []
+                for i, p in enumerate(pdf_reader.pages):
+                    pt = p.extract_text() or ''
+                    if pt.strip():
+                        extracted_pages.append(pt.strip())
+                full_text = "\n\n".join(extracted_pages).strip()
+            except Exception as e:
+                app.logger.warning(f"Error reading PDF pages with pypdf: {e}")
+                full_text = ""
+                num_pages = 0
+
+            if not full_text:
+                full_text = f"[Document: {filename} - Document scanned or encrypted without plain text stream]"
+
+            scan_res = analyze_message(full_text)
+            is_scam = scan_res.get("is_scam", False)
+            if is_scam:
+                stats["suspicious_count"] += 1
+            else:
+                stats["legitimate_count"] += 1
+            stats["total_scanned"] += 1
+
+            tech_details = {
+                "modality": "document",
+                "document_format": "PDF",
+                "filename": filename,
+                "file_size_bytes": len(raw_bytes),
+                "page_count": num_pages,
+                "entropy": entropy,
+                "file_security_checks": file_security_notes,
+                "threat_category": scan_res.get('threat_category', 'Document Security'),
+                "linguistic_metrics": scan_res.get('evidence', {}).get('linguistic_metrics', {})
+            }
+
+            saved_scan_id = save_scan(
+                user_id=user['id'],
+                submitted_message=full_text[:4000],
+                risk_score=scan_res.get('risk_score', 0),
+                risk_level=scan_res.get('risk_level', 'LOW'),
+                threat_classification=scan_res.get('classification', 'Legitimate'),
+                detection_reasons=scan_res.get('reasons', []),
+                suspicious_indicators=scan_res.get('indicators', []),
+                recommended_action=scan_res.get('recommended_action', ''),
+                modality='document',
+                file_name=filename,
+                file_hash=file_hash,
+                technical_details=tech_details
+            )
+            scan_res['scan_id'] = saved_scan_id
+            scan_res['modality'] = 'document'
+            scan_res['filename'] = filename
+            scan_res['page_count'] = num_pages
+            scan_res['file_security_checks'] = file_security_notes
+
+            user_stats = get_user_stats(user['id'])
+            user_stats['model_accuracy'] = stats.get('model_accuracy', 95.65)
+            user_stats['plan_usage'] = get_user_plan_usage(user['id'])
+
+            return jsonify({
+                "status": "success",
+                "is_document": True,
+                "modality": "document",
+                "filename": filename,
+                "page_count": num_pages,
+                "file_security_checks": file_security_notes,
+                "total_processed": 1,
+                "scams_detected": 1 if is_scam else 0,
+                "legitimate_verified": 0 if is_scam else 1,
+                "analysis": scan_res,
+                "results": [scan_res],
+                "updated_stats": user_stats
+            })
 
         # Handle UTF-16 BOM or UTF-8 BOM
         if raw_bytes.startswith(b'\xff\xfe') or raw_bytes.startswith(b'\xfe\xff'):
@@ -1207,7 +1313,6 @@ def scan_file():
 
         if filename.lower().endswith('.csv'):
             import csv
-            import io
             reader = csv.reader(io.StringIO(content))
             header = next(reader, None)
             text_col = 0
@@ -1231,6 +1336,68 @@ def scan_file():
             wa_pattern = re.compile(
                 r'^(?:\[?(\d{1,2}[/-]\d{1,2}[/-]\d{2,4},?\s+\d{1,2}:\d{2}(?::\d{2})?(?:\s+[APMapm]{2})?)\]?)\s*[-:]?\s*([^:]+):\s*(.+)$'
             )
+
+            has_wa_timestamps = any(wa_pattern.match(l.strip()) for l in lines if l.strip())
+
+            if not has_wa_timestamps:
+                # Text Document Upload (Resume, Academic Paper, Technical Report in .txt format)
+                import hashlib
+                from multimodal_detector import calculate_entropy
+                file_hash = hashlib.sha256(raw_bytes).hexdigest()
+                entropy = calculate_entropy(raw_bytes)
+
+                scan_res = analyze_message(content)
+                is_scam = scan_res.get("is_scam", False)
+                if is_scam:
+                    stats["suspicious_count"] += 1
+                else:
+                    stats["legitimate_count"] += 1
+                stats["total_scanned"] += 1
+
+                tech_details = {
+                    "modality": "document",
+                    "document_format": "TXT",
+                    "filename": filename,
+                    "file_size_bytes": len(raw_bytes),
+                    "entropy": entropy,
+                    "threat_category": scan_res.get('threat_category', 'Document Security'),
+                    "linguistic_metrics": scan_res.get('evidence', {}).get('linguistic_metrics', {})
+                }
+
+                saved_scan_id = save_scan(
+                    user_id=user['id'],
+                    submitted_message=content[:4000],
+                    risk_score=scan_res.get('risk_score', 0),
+                    risk_level=scan_res.get('risk_level', 'LOW'),
+                    threat_classification=scan_res.get('classification', 'Legitimate'),
+                    detection_reasons=scan_res.get('reasons', []),
+                    suspicious_indicators=scan_res.get('indicators', []),
+                    recommended_action=scan_res.get('recommended_action', ''),
+                    modality='document',
+                    file_name=filename,
+                    file_hash=file_hash,
+                    technical_details=tech_details
+                )
+                scan_res['scan_id'] = saved_scan_id
+                scan_res['modality'] = 'document'
+                scan_res['filename'] = filename
+
+                user_stats = get_user_stats(user['id'])
+                user_stats['model_accuracy'] = stats.get('model_accuracy', 95.65)
+                user_stats['plan_usage'] = get_user_plan_usage(user['id'])
+
+                return jsonify({
+                    "status": "success",
+                    "is_document": True,
+                    "modality": "document",
+                    "filename": filename,
+                    "total_processed": 1,
+                    "scams_detected": 1 if is_scam else 0,
+                    "legitimate_verified": 0 if is_scam else 1,
+                    "analysis": scan_res,
+                    "results": [scan_res],
+                    "updated_stats": user_stats
+                })
 
             current_msg = None
             for line in lines:

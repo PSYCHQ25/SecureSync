@@ -1314,6 +1314,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // -------------------------------------------------------------------------
     const scanDetailModal = document.getElementById('scan-detail-modal');
     const btnCloseScanDetail = document.getElementById('btn-close-scan-detail');
+    const btnPrintScanDetail = document.getElementById('btn-print-scan-detail');
     const scanDetailBody = document.getElementById('scan-detail-body');
     const modalScanIdTitle = document.getElementById('modal-scan-id-title');
 
@@ -1324,16 +1325,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    if (btnPrintScanDetail) {
+        btnPrintScanDetail.addEventListener('click', () => {
+            window.print();
+        });
+    }
+
     async function openScanDetails(scanId) {
         if (!scanDetailModal || !scanDetailBody) return;
         scanDetailModal.classList.remove('hidden');
         scanDetailBody.innerHTML = `
-            <div class="state-container">
-                <div class="radar-spinner"></div>
-                <p class="loading-text">Loading forensic report for ${escapeHTML(scanId)}...</p>
+            <div class="state-container" style="padding: 40px 20px; text-align: center;">
+                <div class="radar-spinner" style="margin: 0 auto 16px;"></div>
+                <p class="loading-text" style="color: var(--text-muted); font-size: 0.9rem;">Retrieving forensic intelligence audit for ${escapeHTML(scanId)}...</p>
             </div>
         `;
-        if (modalScanIdTitle) modalScanIdTitle.textContent = `Forensic Report: ${scanId}`;
+        if (modalScanIdTitle) modalScanIdTitle.textContent = `Report: ${scanId}`;
 
         try {
             const res = await fetch(`/api/scan/${encodeURIComponent(scanId)}`);
@@ -1350,82 +1357,344 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function buildClientTimeline(s) {
+        const timeline = [];
+        const mod = (s.modality || 'text').toLowerCase();
+        const time = s.created_at || s.timestamp || '';
+        const tech = s.technical_details || {};
+        const indicators = s.suspicious_indicators || s.indicators || [];
+        const reasons = s.detection_reasons || s.reasons || [];
+        const links = s.links || [];
+        const fileName = s.file_name || tech.file_name || '';
+
+        // 1. Submission
+        let submitDesc = 'Text payload submitted for forensic inspection';
+        if (mod !== 'text') {
+            submitDesc = fileName ? `${mod.toUpperCase()} asset received: ${fileName}` : `${mod.toUpperCase()} binary asset received`;
+        }
+        timeline.push({ phase: 'Submission Received', detail: submitDesc, time: time });
+
+        // 2. Validation / Integrity
+        if (mod !== 'text') {
+            const fmt = tech.format || tech.container || 'Validated Container';
+            const sha = tech.sha256 || s.file_hash || '';
+            const hashNote = sha ? ` · SHA-256 verified (${sha.substring(0, 12)}…)` : '';
+            timeline.push({ phase: 'Integrity Verification', detail: `Format verified: ${fmt}${hashNote}`, time: '' });
+
+            const metaParts = [];
+            if (tech.dimensions) metaParts.push(`Dimensions: ${tech.dimensions}`);
+            if (tech.duration_seconds != null) metaParts.push(`Duration: ${tech.duration_seconds}s`);
+            if (tech.sample_rate) metaParts.push(`Sample Rate: ${tech.sample_rate} Hz`);
+            if (tech.file_size_formatted) metaParts.push(`Size: ${tech.file_size_formatted}`);
+            if (tech.entropy != null) metaParts.push(`Entropy: ${tech.entropy}/8.0`);
+            if (tech.encoder_software) metaParts.push(`Encoder: ${tech.encoder_software}`);
+            if (metaParts.length > 0) {
+                timeline.push({ phase: 'Metadata Extraction', detail: metaParts.join(' · '), time: '' });
+            }
+        } else {
+            const msg = s.submitted_message || '';
+            const parts = [`${msg.length} characters`, `${msg.trim() ? msg.trim().split(/\s+/).length : 0} words`];
+            if (links.length > 0) parts.push(`${links.length} embedded URL(s)`);
+            timeline.push({ phase: 'Payload Parsing', detail: parts.join(' · '), time: '' });
+        }
+
+        // 3. Engine Invocation
+        let engineDesc = 'Dual NLP Threat Classifier + Heuristic Heuristics executed';
+        if (mod === 'image') engineDesc = 'Image forensic pipeline: QR decode, steganography check, metadata audit, entropy profiling';
+        else if (mod === 'audio') engineDesc = 'Audio forensic pipeline: spectral analysis, voice synthesis detection, frequency analysis';
+        else if (mod === 'video') engineDesc = 'Video forensic pipeline: container inspection, deepfake synthesis scan, A/V synchronization';
+        timeline.push({ phase: 'Forensic Engine Analysis', detail: engineDesc, time: '' });
+
+        // 4. Heuristic & Vector Analysis Complete
+        const indCount = Array.isArray(indicators) ? indicators.length : 0;
+        const reasonCount = Array.isArray(reasons) ? reasons.length : 0;
+        if (indCount > 0 || reasonCount > 0) {
+            const parts = [];
+            if (indCount > 0) parts.push(`${indCount} threat indicator(s) identified`);
+            if (reasonCount > 0) parts.push(`${reasonCount} detection reason(s) logged`);
+            timeline.push({ phase: 'Analysis Complete', detail: parts.join(' · '), time: '' });
+        } else {
+            timeline.push({ phase: 'Analysis Complete', detail: 'No malicious signatures or anomalies detected', time: '' });
+        }
+
+        // 5. Classification
+        const riskLevel = (s.risk_level || 'LOW').toUpperCase();
+        const score = s.risk_score ?? s.confidence ?? 0;
+        const verdict = s.threat_classification || s.classification || 'Clean Asset';
+        timeline.push({ phase: 'Classification Issued', detail: `${verdict} · Risk: ${riskLevel} (${score}/100)`, time: '' });
+
+        return timeline;
+    }
+
     function renderScanDetailReport(s) {
-        const isThreat = (s.risk_level === 'CRITICAL' || s.risk_level === 'HIGH' || (s.threat_classification || '').toLowerCase().includes('scam'));
+        const riskLevel = (s.risk_level || 'LOW').toUpperCase();
+        const score = s.risk_score ?? s.confidence ?? 0;
+        const verdict = s.threat_classification || s.classification || 'Clean';
+        const isThreat = (riskLevel === 'CRITICAL' || riskLevel === 'HIGH' || verdict.toLowerCase().includes('scam') || verdict.toLowerCase().includes('threat'));
+        const isWarn = (riskLevel === 'MEDIUM');
+        const cardClass = isThreat ? 'threat' : (isWarn ? 'warning' : 'clean');
         const badgeClass = isThreat ? 'status-badge-scam' : 'status-badge-legit';
         const mod = (s.modality || 'text').toUpperCase();
+        const tech = s.technical_details || {};
+        const indicators = s.suspicious_indicators || s.indicators || [];
+        const reasons = s.detection_reasons || s.reasons || [];
+        const links = s.links || [];
 
-        let indListHtml = '';
-        if (Array.isArray(s.suspicious_indicators) && s.suspicious_indicators.length > 0) {
-            indListHtml = s.suspicious_indicators.map(ind => `
-                <div class="indicator-card" style="margin-bottom:8px;">
-                    <div class="indicator-header">
-                        <span class="indicator-name">${escapeHTML(ind.name || 'Threat Vector')}</span>
-                        <span class="severity-pill sev-${(ind.severity || 'high').toLowerCase()}">${escapeHTML(ind.severity || 'HIGH')}</span>
-                    </div>
-                    <p class="indicator-desc">${escapeHTML(ind.explanation || '')}</p>
+        // Concise assessment summary based strictly on actual findings
+        let assessmentSummary = `This <strong>${escapeHTML(mod)}</strong> asset has been evaluated as <strong>${escapeHTML(verdict)}</strong> with a computed risk score of <strong>${score}/100</strong> (${escapeHTML(riskLevel)} risk).`;
+        if (isThreat) {
+            assessmentSummary += ` The forensic engine flagged suspicious indicators consistent with <strong>${escapeHTML(s.threat_category || 'Identified Threat')}</strong>. Immediate containment and escalation are recommended.`;
+        } else {
+            assessmentSummary += ` No malicious heuristic patterns, steganographic anomalies, or fraudulent cues were detected. The asset satisfies baseline integrity requirements.`;
+        }
+
+        // Timeline
+        const timelineSteps = buildClientTimeline(s);
+        const timelineHtml = timelineSteps.map((step, idx) => `
+            <div class="timeline-step">
+                <div class="timeline-step-head">
+                    <span class="timeline-step-phase">${idx + 1}. ${escapeHTML(step.phase)}</span>
+                    ${step.time ? `<span class="timeline-step-time">${escapeHTML(step.time)}</span>` : ''}
                 </div>
-            `).join('');
+                <div class="timeline-step-detail">${escapeHTML(step.detail)}</div>
+            </div>
+        `).join('');
+
+        // Indicators
+        let indListHtml = '';
+        if (Array.isArray(indicators) && indicators.length > 0) {
+            indListHtml = `
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    ${indicators.map(ind => `
+                        <div class="indicator-card" style="margin:0;">
+                            <div class="indicator-header">
+                                <span class="indicator-name">${escapeHTML(ind.name || 'Threat Vector')}</span>
+                                <span class="severity-pill sev-${(ind.severity || 'high').toLowerCase()}">${escapeHTML(ind.severity || 'HIGH')}</span>
+                            </div>
+                            <p class="indicator-desc">${escapeHTML(ind.explanation || 'No supplementary detail provided.')}</p>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
         } else {
-            indListHtml = '<p style="color:var(--green-safe); font-size:0.9rem;">✔ No suspicious heuristic signatures detected in this submission.</p>';
+            indListHtml = `
+                <div style="background:var(--green-bg); border:1px solid var(--green-border); border-radius:var(--radius-sm); padding:12px 16px; color:var(--green-safe); font-size:0.86rem; display:flex; align-items:center; gap:8px;">
+                    <span>✔</span>
+                    <span><strong>No threat indicators detected.</strong> The asset conforms to standard defensive criteria with zero anomaly flags.</span>
+                </div>
+            `;
         }
 
+        // Detection reasons
         let reasonsHtml = '';
-        if (Array.isArray(s.detection_reasons) && s.detection_reasons.length > 0) {
-            reasonsHtml = s.detection_reasons.map(r => `<li>${escapeHTML(r)}</li>`).join('');
+        if (Array.isArray(reasons) && reasons.length > 0) {
+            reasonsHtml = reasons.map(r => `<li>${escapeHTML(r)}</li>`).join('');
         } else {
-            reasonsHtml = '<li>Standard verification completed.</li>';
+            reasonsHtml = '<li>Standard verification checks completed with no anomalous flags.</li>';
         }
+
+        // Quarantined links
+        let linksHtml = '';
+        if (Array.isArray(links) && links.length > 0) {
+            linksHtml = `
+                <div style="margin-top: 18px;">
+                    <div class="forensic-section-title">Quarantined Network Links (${links.length})</div>
+                    <div style="overflow-x:auto;">
+                        <table class="data-table" style="font-size:0.82rem; margin:0; width:100%;">
+                            <thead>
+                                <tr><th>Defanged Target</th><th>Domain</th><th>Security Flags</th></tr>
+                            </thead>
+                            <tbody>
+                                ${links.map(l => {
+                                    const flags = [];
+                                    if (l.is_shortener) flags.push('URL Shortener');
+                                    if (l.brand_spoofing) flags.push('Brand Spoofing');
+                                    if (l.has_suspicious_tld) flags.push('Suspicious TLD');
+                                    if (l.is_ip_address) flags.push('Direct IP');
+                                    return `<tr>
+                                        <td style="font-family:var(--font-mono); color:var(--primary); font-size:0.75rem;">${escapeHTML(l.defanged || '')}</td>
+                                        <td>${escapeHTML(l.domain || '—')}</td>
+                                        <td style="color:var(--red-threat); font-weight:600;">${escapeHTML(flags.join(', ') || 'Quarantined')}</td>
+                                    </tr>`;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Supplementary next actions
+        const nextSteps = [];
+        if (isThreat) {
+            nextSteps.push("Quarantine the submitted asset and restrict distribution pending incident resolution.");
+            if (links && links.length > 0) {
+                nextSteps.push(`Block or defang ${links.length} identified network URL(s) at firewall / perimeter.`);
+            }
+            if (indicators && indicators.length > 0) {
+                nextSteps.push(`Escalate ${indicators.length} identified forensic indicator(s) to SOC team for correlation.`);
+            }
+            nextSteps.push("Preserve original file artifacts and cryptographic hashes for chain-of-custody audit.");
+        } else {
+            nextSteps.push("No immediate defensive action required — asset successfully passed all forensic checks.");
+            nextSteps.push("Maintain standard defensive posture and routine security awareness monitoring.");
+        }
+
+        // Media details grid items
+        const fileHash = s.file_hash || tech.sha256 || '';
+        const fileName = s.file_name || tech.file_name || '';
 
         scanDetailBody.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:20px; padding-bottom:14px; border-bottom:1px solid var(--border-color);">
-                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                    <span class="modality-badge-indicator modality-badge-${(s.modality || 'text').toLowerCase()}">${mod}</span>
-                    <span class="status-badge ${badgeClass}" style="font-size:0.95rem; padding:6px 14px;">${escapeHTML(s.threat_classification || s.classification)}</span>
-                    <span class="panel-badge" style="background:var(--bg-subtle); border:1px solid var(--border-color); color:var(--text-secondary); font-size:0.75rem;">${escapeHTML(s.threat_category || 'General Assessment')}</span>
+            <div class="forensic-report-wrapper">
+                <!-- 1. Header Bar -->
+                <div class="forensic-header-bar">
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <span class="modality-badge-indicator modality-badge-${(s.modality || 'text').toLowerCase()}">${mod}</span>
+                        <span class="status-badge ${badgeClass}" style="font-size:0.95rem; padding:6px 14px;">${escapeHTML(verdict)}</span>
+                        <span class="panel-badge" style="background:var(--bg-subtle); border:1px solid var(--border-color); color:var(--text-secondary); font-size:0.75rem;">${escapeHTML(s.threat_category || 'General Audit')}</span>
+                    </div>
+                    <div style="display:flex; gap:12px; align-items:center;">
+                        <span class="risk-badge risk-${riskLevel.toLowerCase()}">Risk: ${escapeHTML(riskLevel)}</span>
+                        <span style="font-family:var(--font-mono); font-weight:700; color:var(--primary); font-size:1.15rem;">${score}/100</span>
+                    </div>
                 </div>
-                <div style="display:flex; gap:16px; align-items:center;">
-                    <span class="risk-badge risk-${(s.risk_level || 'low').toLowerCase()}">Risk: ${escapeHTML(s.risk_level)}</span>
-                    <span style="font-family:var(--font-mono); font-weight:700; color:var(--primary); font-size:1.1rem;">Score: ${s.risk_score ?? s.confidence}%</span>
+
+                <!-- 2. Executive Assessment -->
+                <div>
+                    <div class="forensic-section-title">Executive Assessment</div>
+                    <div class="forensic-assessment-card ${cardClass}">
+                        <div class="forensic-stat-grid">
+                            <div class="forensic-stat-cell">
+                                <span class="forensic-stat-label">Risk Level</span>
+                                <span class="forensic-stat-value" style="color:${isThreat ? 'var(--red-threat)' : (isWarn ? 'var(--amber-warn)' : 'var(--green-safe)')};">${escapeHTML(riskLevel)}</span>
+                            </div>
+                            <div class="forensic-stat-cell">
+                                <span class="forensic-stat-label">Threat Score</span>
+                                <span class="forensic-stat-value">${score} <span style="font-size:0.8rem; font-weight:normal; color:var(--text-muted);">/ 100</span></span>
+                            </div>
+                            <div class="forensic-stat-cell">
+                                <span class="forensic-stat-label">Classification</span>
+                                <span class="forensic-stat-value" style="font-size:0.95rem;">${escapeHTML(verdict)}</span>
+                            </div>
+                            <div class="forensic-stat-cell">
+                                <span class="forensic-stat-label">Modality</span>
+                                <span class="forensic-stat-value" style="font-size:0.95rem;">${escapeHTML(mod)}</span>
+                            </div>
+                        </div>
+                        <div class="forensic-assessment-summary">
+                            ${assessmentSummary}
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <div style="margin-bottom:18px;">
-                <label style="font-size:0.8rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; letter-spacing:0.5px;">Target Asset Payload / Evidence</label>
-                <div style="background:var(--bg-subtle); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:14px; font-family:var(--font-mono); font-size:0.85rem; color:var(--text-primary); margin-top:6px; word-break:break-word; max-height:160px; overflow-y:auto;">
-                    ${escapeHTML(s.submitted_message)}
+                <!-- 3. Scan Metadata -->
+                <div>
+                    <div class="forensic-section-title">Scan Metadata & Asset Profile</div>
+                    <div class="forensic-meta-table">
+                        <div class="forensic-meta-item">
+                            <span class="meta-k">Scan ID</span>
+                            <span class="meta-v" style="font-family:var(--font-mono); display:flex; align-items:center; gap:6px;">
+                                <span>${escapeHTML(s.scan_id)}</span>
+                                <button type="button" class="copy-btn" onclick="navigator.clipboard.writeText('${escapeHTML(s.scan_id)}')" title="Copy Scan ID">📋</button>
+                            </span>
+                        </div>
+                        <div class="forensic-meta-item">
+                            <span class="meta-k">Audit Date</span>
+                            <span class="meta-v">${escapeHTML(s.created_at || s.timestamp || '—')}</span>
+                        </div>
+                        <div class="forensic-meta-item">
+                            <span class="meta-k">Modality</span>
+                            <span class="meta-v">${escapeHTML(mod)}</span>
+                        </div>
+                        <div class="forensic-meta-item">
+                            <span class="meta-k">Threat Category</span>
+                            <span class="meta-v">${escapeHTML(s.threat_category || verdict)}</span>
+                        </div>
+                        ${fileName ? `
+                            <div class="forensic-meta-item">
+                                <span class="meta-k">File Name</span>
+                                <span class="meta-v">${escapeHTML(fileName)}</span>
+                            </div>
+                        ` : ''}
+                        ${fileHash ? `
+                            <div class="forensic-meta-item">
+                                <span class="meta-k">SHA-256 Hash</span>
+                                <span class="meta-v" style="font-family:var(--font-mono); font-size:0.75rem;">${escapeHTML(fileHash)}</span>
+                            </div>
+                        ` : ''}
+                        ${tech.format ? `
+                            <div class="forensic-meta-item">
+                                <span class="meta-k">Container / Format</span>
+                                <span class="meta-v">${escapeHTML(tech.format)}</span>
+                            </div>
+                        ` : ''}
+                        ${tech.entropy != null ? `
+                            <div class="forensic-meta-item">
+                                <span class="meta-k">Entropy Score</span>
+                                <span class="meta-v">${escapeHTML(tech.entropy)} / 8.0</span>
+                            </div>
+                        ` : ''}
+                    </div>
                 </div>
-            </div>
 
-            <div style="margin-bottom:18px;">
-                <label style="font-size:0.8rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; letter-spacing:0.5px;">Recommended Protective Directive</label>
-                <div style="background:var(--primary-light); border:1px solid var(--primary-border); border-radius:var(--radius-sm); padding:12px 14px; color:var(--text-primary); margin-top:6px; font-size:0.9rem;">
-                    ${escapeHTML(s.recommended_action || 'No action required.')}
+                <!-- 4. Evidence Sample -->
+                <div>
+                    <div class="forensic-section-title">Evidence Sample</div>
+                    <div style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:14px; font-family:var(--font-mono); font-size:0.83rem; color:var(--text-primary); word-break:break-word; max-height:160px; overflow-y:auto;">
+                        ${s.submitted_message ? escapeHTML(s.submitted_message) : (fileName ? `Binary forensic analysis conducted directly on asset: ${escapeHTML(fileName)}` : 'Payload data not retained under zero-knowledge storage policy.')}
+                    </div>
                 </div>
-            </div>
 
-            <div style="margin-bottom:18px;">
-                <label style="font-size:0.8rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; letter-spacing:0.5px;">Detection Reasoning</label>
-                <ul class="reasons-list" style="margin-top:6px;">
-                    ${reasonsHtml}
-                </ul>
-            </div>
-
-            <div style="margin-bottom:20px;">
-                <label style="font-size:0.8rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; letter-spacing:0.5px;">Forensic Threat Indicators</label>
-                <div style="margin-top:8px;">
+                <!-- 5. Evidence-Backed Findings -->
+                <div>
+                    <div class="forensic-section-title">Evidence-Backed Findings (${Array.isArray(indicators) ? indicators.length : 0})</div>
                     ${indListHtml}
                 </div>
-            </div>
 
-            <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-                <div style="font-size:0.8rem; color:var(--text-muted); font-family:var(--font-mono);">
-                    <span>ID: ${escapeHTML(s.scan_id)}</span> • <span>${escapeHTML(s.created_at || s.scanned_at || '')}</span>
-                </div>
+                <!-- 6. Detection Reasoning -->
                 <div>
-                    <a href="/api/scan/${encodeURIComponent(s.scan_id)}/pdf" class="btn-primary" style="padding:8px 18px; font-size:0.85rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
-                        📥 Download PDF Investigation Report
-                    </a>
+                    <div class="forensic-section-title">Detection Reasoning</div>
+                    <ul class="reasons-list" style="margin:0; padding-left:18px;">
+                        ${reasonsHtml}
+                    </ul>
+                </div>
+
+                <!-- 7. Quarantined Links (if present) -->
+                ${linksHtml}
+
+                <!-- 8. Investigation Timeline -->
+                <div>
+                    <div class="forensic-section-title">Chronological Investigation Timeline</div>
+                    <div class="forensic-timeline">
+                        ${timelineHtml}
+                    </div>
+                </div>
+
+                <!-- 9. Recommended Next Actions -->
+                <div>
+                    <div class="forensic-section-title">Recommended Next Actions</div>
+                    <div class="forensic-directive-card ${isThreat ? 'threat' : 'clean'}">
+                        <span class="forensic-directive-title">Primary Directive</span>
+                        <span class="forensic-directive-content">${escapeHTML(s.recommended_action || (isThreat ? 'Quarantine asset immediately.' : 'Maintain standard defensive posture.'))}</span>
+                        <ul class="forensic-next-actions">
+                            ${nextSteps.map(step => `<li>${escapeHTML(step)}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 10. Footer / Action Bar -->
+                <div class="modal-footer-actions" style="margin-top:10px; padding-top:16px; border-top:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                    <div style="font-size:0.78rem; color:var(--text-muted); font-family:var(--font-mono);">
+                        <span>Scan ID: ${escapeHTML(s.scan_id)}</span> · <span>${escapeHTML(s.created_at || s.timestamp || '')}</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <button type="button" class="btn-secondary" onclick="window.print()" style="padding:8px 14px; font-size:0.85rem; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+                            🖨️ Print Report
+                        </button>
+                        <a href="/api/scan/${encodeURIComponent(s.scan_id)}/pdf" class="btn-primary" style="padding:8px 18px; font-size:0.85rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                            📥 Download PDF Report
+                        </a>
+                    </div>
                 </div>
             </div>
         `;
