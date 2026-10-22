@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SecureSync – Multi Detection System | Account & Privacy Settings</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=5.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=5.1">
     <script src="{{ url_for('static', filename='theme.js') }}?v=5.0"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -345,13 +345,7 @@
         </div>
     </div>
 
-    <footer class="footer">
-        <p>&copy; 2026 <strong>SecureSync – Multi Detection System</strong>. Enterprise Threat Defense &amp; Media Intelligence. All rights reserved.</p>
-        <p class="disclaimer-text">
-            <a href="{{ url_for('privacy') }}" style="color: var(--primary); text-decoration: none;">Privacy Policy</a> • 
-            <a href="{{ url_for('terms') }}" style="color: var(--primary); text-decoration: none;">Terms of Service</a> • 
-            Multi-tenant data isolation with PBKDF2:SHA-256 credentials.
-        </p>
-    </footer>
+    <!-- Temporary College Evaluation Credits Footer (Easy Removal) -->
+    {% include 'footer.html' %}
 </body>
 </html>
